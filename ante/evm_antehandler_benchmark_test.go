@@ -7,8 +7,6 @@ import (
 
 	"github.com/cosmos/evm/ante"
 	ethante "github.com/cosmos/evm/ante/evm"
-	evmdante "github.com/mail-chat-chain/mailchatd/ante"
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	basefactory "github.com/cosmos/evm/testutil/integration/base/factory"
 	"github.com/cosmos/evm/testutil/integration/evm/factory"
 	"github.com/cosmos/evm/testutil/integration/evm/grpc"
@@ -16,6 +14,8 @@ import (
 	testkeyring "github.com/cosmos/evm/testutil/keyring"
 	cosmosevmtypes "github.com/cosmos/evm/types"
 	evmtypes "github.com/cosmos/evm/x/vm/types"
+	evmdante "github.com/mail-chat-chain/mailchatd/ante"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 
 	"cosmossdk.io/errors"
 	"cosmossdk.io/math"

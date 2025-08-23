@@ -144,7 +144,7 @@ func init() {
 	DefaultNodeHome = evmdconfig.MustGetDefaultNodeHome()
 }
 
-const AppName = "evmd"
+const AppName = "mailchatd"
 
 // DefaultNodeHome default home directories for the application daemon
 var DefaultNodeHome string
