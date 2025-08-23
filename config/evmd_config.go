@@ -126,6 +126,8 @@ func InitAppConfig(denom string, evmChainID uint64) (string, interface{}) {
 		TLS:     *cosmosevmserverconfig.DefaultTLSConfig(),
 	}
 
+	customAppConfig.JSONRPC.API = cosmosevmserverconfig.GetAPINamespaces()
+
 	return EVMAppTemplate, customAppConfig
 }
 
