@@ -1,4 +1,4 @@
-package evmd
+package tests
 
 import (
 	"encoding/json"

@@ -26,10 +26,10 @@ import (
 	clientkeys "github.com/cosmos/evm/client/keys"
 	"github.com/cosmos/evm/crypto/hd"
 	cosmosevmkeyring "github.com/cosmos/evm/crypto/keyring"
-	"github.com/mail-chat-chain/mailchatd"
-	"github.com/mail-chat-chain/mailchatd/tests/ledger/mocks"
 	"github.com/cosmos/evm/testutil/constants"
 	utiltx "github.com/cosmos/evm/testutil/tx"
+	evmd "github.com/mail-chat-chain/mailchatd"
+	"github.com/mail-chat-chain/mailchatd/tests/ledger/mocks"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
@@ -40,6 +40,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/server"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdktestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
+	tests "github.com/mail-chat-chain/mailchatd/tests"
 )
 
 var s *LedgerTestSuite
@@ -88,7 +89,7 @@ func (suite *LedgerTestSuite) SetupEvmosApp() {
 
 	// init app
 	chainID := constants.ExampleChainID
-	suite.app = evmd.Setup(suite.T(), chainID.ChainID, chainID.EVMChainID)
+	suite.app = tests.Setup(suite.T(), chainID.ChainID, chainID.EVMChainID)
 	suite.ctx = suite.app.NewContextLegacy(false, tmproto.Header{
 		Height:          1,
 		ChainID:         chainID.ChainID,
