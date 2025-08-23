@@ -5,20 +5,20 @@ import (
 	"io"
 	"os"
 
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	tmcfg "github.com/cometbft/cometbft/config"
+	cmtcfg "github.com/cometbft/cometbft/config"
 	cmtcli "github.com/cometbft/cometbft/libs/cli"
 
 	dbm "github.com/cosmos/cosmos-db"
 	cosmosevmcmd "github.com/cosmos/evm/client"
-	evmdconfig "github.com/mail-coin/mailchatd/cmd/mailchatd/config"
 	cosmosevmkeyring "github.com/cosmos/evm/crypto/keyring"
-	"github.com/mail-coin/mailchatd"
+	"github.com/cosmos/evm/evmd"
+	evmdconfig "github.com/cosmos/evm/evmd/cmd/evmd/config"
 	cosmosevmserver "github.com/cosmos/evm/server"
-	cosmosevmserverconfig "github.com/cosmos/evm/server/config"
 	srvflags "github.com/cosmos/evm/server/flags"
 
 	"cosmossdk.io/log"
@@ -36,11 +36,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/rpc"
 	"github.com/cosmos/cosmos-sdk/client/snapshot"
 	sdkserver "github.com/cosmos/cosmos-sdk/server"
-	serverconfig "github.com/cosmos/cosmos-sdk/server/config"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkmempool "github.com/cosmos/cosmos-sdk/types/mempool"
 	sdktestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
@@ -75,7 +73,6 @@ func NewRootCmd() *cobra.Command {
 		TxConfig:          tempApp.GetTxConfig(),
 		Amino:             tempApp.LegacyAmino(),
 	}
-
 	initClientCtx := client.Context{}.
 		WithCodec(encodingConfig.Codec).
 		WithInterfaceRegistry(encodingConfig.InterfaceRegistry).
@@ -84,14 +81,14 @@ func NewRootCmd() *cobra.Command {
 		WithInput(os.Stdin).
 		WithAccountRetriever(authtypes.AccountRetriever{}).
 		WithBroadcastMode(flags.FlagBroadcastMode).
-		WithHomeDir(evmd.DefaultNodeHome).
+		WithHomeDir(evmdconfig.MustGetDefaultNodeHome()).
 		WithViper(""). // In simapp, we don't use any prefix for env variables.
 		// Cosmos EVM specific setup
 		WithKeyringOptions(cosmosevmkeyring.Option()).
 		WithLedgerHasProtobuf(true)
 
 	rootCmd := &cobra.Command{
-		Use:   "mailchatd",
+		Use:   "evmd",
 		Short: "exemplary Cosmos EVM app",
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			// set the default command outputs
@@ -133,8 +130,8 @@ func NewRootCmd() *cobra.Command {
 				return err
 			}
 
-			customAppTemplate, customAppConfig := InitAppConfig(evmdconfig.BaseDenom, evmdconfig.EVMChainID)
-			customTMConfig := initTendermintConfig()
+			customAppTemplate, customAppConfig := evmdconfig.InitAppConfig(evmdconfig.BaseDenom, evmdconfig.EVMChainID)
+			customTMConfig := initCometConfig()
 
 			return sdkserver.InterceptConfigsPreRunHandler(cmd, customAppTemplate, customAppConfig, customTMConfig)
 		},
@@ -151,7 +148,7 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	if initClientCtx.ChainID != "" {
-		if err := evmd.EvmAppOptions(evmdconfig.EVMChainID); err != nil {
+		if err := evmdconfig.EvmAppOptions(evmdconfig.EVMChainID); err != nil {
 			panic(err)
 		}
 	}
@@ -159,10 +156,10 @@ func NewRootCmd() *cobra.Command {
 	return rootCmd
 }
 
-// initTendermintConfig helps to override default Tendermint Config values.
-// return tmcfg.DefaultConfig if no custom configuration is required for the application.
-func initTendermintConfig() *tmcfg.Config {
-	cfg := tmcfg.DefaultConfig()
+// initCometConfig helps to override default CometBFT Config values.
+// return cmtcfg.DefaultConfig if no custom configuration is required for the application.
+func initCometConfig() *cmtcfg.Config {
+	cfg := cmtcfg.DefaultConfig()
 
 	// these values put a higher strain on node memory
 	// cfg.P2P.MaxNumInboundPeers = 100
@@ -171,78 +168,36 @@ func initTendermintConfig() *tmcfg.Config {
 	return cfg
 }
 
-// InitAppConfig helps to override default appConfig template and configs.
-// return "", nil if no custom configuration is required for the application.
-func InitAppConfig(denom string, evmChainID uint64) (string, interface{}) {
-	type CustomAppConfig struct {
-		serverconfig.Config
-
-		EVM     cosmosevmserverconfig.EVMConfig
-		JSONRPC cosmosevmserverconfig.JSONRPCConfig
-		TLS     cosmosevmserverconfig.TLSConfig
-	}
-
-	// Optionally allow the chain developer to overwrite the SDK's default
-	// server config.
-	srvCfg := serverconfig.DefaultConfig()
-	// The SDK's default minimum gas price is set to "" (empty value) inside
-	// app.toml. If left empty by validators, the node will halt on startup.
-	// However, the chain developer can set a default app.toml value for their
-	// validators here.
-	//
-	// In summary:
-	// - if you leave srvCfg.MinGasPrices = "", all validators MUST tweak their
-	//   own app.toml config,
-	// - if you set srvCfg.MinGasPrices non-empty, validators CAN tweak their
-	//   own app.toml to override, or use this default value.
-	//
-	// In this example application, we set the min gas prices to 0.
-	srvCfg.MinGasPrices = "0" + denom
-
-	evmCfg := cosmosevmserverconfig.DefaultEVMConfig()
-	evmCfg.EVMChainID = evmChainID
-
-	customAppConfig := CustomAppConfig{
-		Config:  *srvCfg,
-		EVM:     *evmCfg,
-		JSONRPC: *cosmosevmserverconfig.DefaultJSONRPCConfig(),
-		TLS:     *cosmosevmserverconfig.DefaultTLSConfig(),
-	}
-
-	customAppTemplate := serverconfig.DefaultConfigTemplate +
-		cosmosevmserverconfig.DefaultEVMConfigTemplate
-
-	return customAppTemplate, customAppConfig
-}
-
-func initRootCmd(rootCmd *cobra.Command, osApp *evmd.EVMD) {
+func initRootCmd(rootCmd *cobra.Command, evmApp *evmd.EVMD) {
 	cfg := sdk.GetConfig()
 	cfg.Seal()
 
+	defaultNodeHome := evmdconfig.MustGetDefaultNodeHome()
+	sdkAppCreator := func(l log.Logger, d dbm.DB, w io.Writer, ao servertypes.AppOptions) servertypes.Application {
+		return newApp(l, d, w, ao)
+	}
 	rootCmd.AddCommand(
-		genutilcli.InitCmd(
-			osApp.BasicModuleManager,
-			evmd.DefaultNodeHome,
-		),
-		genutilcli.Commands(osApp.TxConfig(), osApp.BasicModuleManager, evmd.DefaultNodeHome),
+		genutilcli.InitCmd(evmApp.BasicModuleManager, defaultNodeHome),
+		genutilcli.Commands(evmApp.TxConfig(), evmApp.BasicModuleManager, defaultNodeHome),
 		cmtcli.NewCompletionCmd(rootCmd, true),
 		debug.Cmd(),
 		confixcmd.ConfigCommand(),
-		pruning.Cmd(newApp, evmd.DefaultNodeHome),
-		snapshot.Cmd(newApp),
+		pruning.Cmd(sdkAppCreator, defaultNodeHome),
+		snapshot.Cmd(sdkAppCreator),
+		NewTestnetCmd(evmApp.BasicModuleManager, banktypes.GenesisBalancesIterator{}, appCreator{}),
 	)
 
 	// add Cosmos EVM' flavored TM commands to start server, etc.
 	cosmosevmserver.AddCommands(
 		rootCmd,
-		cosmosevmserver.NewDefaultStartOptions(newApp, evmd.DefaultNodeHome),
+		cosmosevmserver.NewDefaultStartOptions(newApp, defaultNodeHome),
 		appExport,
 		addModuleInitFlags,
 	)
 
 	// add Cosmos EVM key commands
 	rootCmd.AddCommand(
-		cosmosevmcmd.KeyCommands(evmd.DefaultNodeHome, true),
+		cosmosevmcmd.KeyCommands(defaultNodeHome, true),
 	)
 
 	// add keybase, auxiliary RPC, query, genesis, and tx child commands
@@ -318,7 +273,7 @@ func newApp(
 	db dbm.DB,
 	traceStore io.Writer,
 	appOpts servertypes.AppOptions,
-) servertypes.Application {
+) cosmosevmserver.Application {
 	var cache storetypes.MultiStorePersistentCache
 
 	if cast.ToBool(appOpts.Get(sdkserver.FlagInterBlockCache)) {
@@ -361,21 +316,11 @@ func newApp(
 		baseapp.SetChainID(chainID),
 	}
 
-	// Set up the required mempool and ABCI proposal handlers for Cosmos EVM
-	baseappOptions = append(baseappOptions, func(app *baseapp.BaseApp) {
-		mempool := sdkmempool.NoOpMempool{}
-		app.SetMempool(mempool)
-
-		handler := baseapp.NewDefaultProposalHandler(mempool, app)
-		app.SetPrepareProposal(handler.PrepareProposalHandler())
-		app.SetProcessProposal(handler.ProcessProposalHandler())
-	})
-
 	return evmd.NewExampleApp(
 		logger, db, traceStore, true,
 		appOpts,
 		evmdconfig.EVMChainID,
-		evmd.EvmAppOptions,
+		evmdconfig.EvmAppOptions,
 		baseappOptions...,
 	)
 }
@@ -416,13 +361,13 @@ func appExport(
 	}
 
 	if height != -1 {
-		exampleApp = evmd.NewExampleApp(logger, db, traceStore, false, appOpts, evmdconfig.EVMChainID, evmd.EvmAppOptions, baseapp.SetChainID(chainID))
+		exampleApp = evmd.NewExampleApp(logger, db, traceStore, false, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
 
 		if err := exampleApp.LoadHeight(height); err != nil {
 			return servertypes.ExportedApp{}, err
 		}
 	} else {
-		exampleApp = evmd.NewExampleApp(logger, db, traceStore, true, appOpts, evmdconfig.EVMChainID, evmd.EvmAppOptions, baseapp.SetChainID(chainID))
+		exampleApp = evmd.NewExampleApp(logger, db, traceStore, true, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
 	}
 
 	return exampleApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs, modulesToExport)

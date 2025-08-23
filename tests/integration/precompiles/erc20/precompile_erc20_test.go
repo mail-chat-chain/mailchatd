@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mail-coin/mailchatd/tests/integration"
+	"github.com/cosmos/evm/evmd/tests/integration"
 	erc21 "github.com/cosmos/evm/tests/integration/precompiles/erc20"
 )
 

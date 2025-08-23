@@ -32,4 +32,3 @@ contracts/@openzeppelin/*
 # Build files
 build/
 .testnets
-mailchatd
