@@ -12,7 +12,7 @@ import (
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
-	evmd "github.com/mail-chat-chain/mailchatd"
+	evmd "github.com/mail-chat-chain/mailchatd/app"
 	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"

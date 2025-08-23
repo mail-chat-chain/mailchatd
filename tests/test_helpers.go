@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	testconfig "github.com/cosmos/evm/testutil/config"
-	evmd "github.com/mail-chat-chain/mailchatd"
+	evmd "github.com/mail-chat-chain/mailchatd/app"
 	"github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 	"github.com/stretchr/testify/require"
 

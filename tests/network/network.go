@@ -32,7 +32,7 @@ import (
 	testconfig "github.com/cosmos/evm/testutil/config"
 	testconstants "github.com/cosmos/evm/testutil/constants"
 	cosmosevmtypes "github.com/cosmos/evm/types"
-	evmd "github.com/mail-chat-chain/mailchatd"
+	evmd "github.com/mail-chat-chain/mailchatd/app"
 	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 
 	"cosmossdk.io/log"

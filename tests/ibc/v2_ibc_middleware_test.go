@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	testifysuite "github.com/stretchr/testify/suite"
 
-	"github.com/mail-chat-chain/mailchatd"
+	"github.com/mail-chat-chain/mailchatd/app"
 	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/testutil"
 	evmibctesting "github.com/cosmos/evm/testutil/ibc"

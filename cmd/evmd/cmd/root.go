@@ -18,7 +18,7 @@ import (
 	cosmosevmkeyring "github.com/cosmos/evm/crypto/keyring"
 	cosmosevmserver "github.com/cosmos/evm/server"
 	srvflags "github.com/cosmos/evm/server/flags"
-	evmd "github.com/mail-chat-chain/mailchatd"
+	evmd "github.com/mail-chat-chain/mailchatd/app"
 	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 
 	"cosmossdk.io/log"

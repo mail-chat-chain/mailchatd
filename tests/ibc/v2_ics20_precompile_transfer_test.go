@@ -14,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mail-chat-chain/mailchatd"
+	"github.com/mail-chat-chain/mailchatd/app"
 	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/precompiles/ics20"
 	chainutil "github.com/cosmos/evm/testutil"
