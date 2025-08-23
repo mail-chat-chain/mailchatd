@@ -3,7 +3,7 @@ package ante
 import (
 	"testing"
 
-	"github.com/cosmos/evm/evmd/tests/integration"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/tests/integration/ante"
 )
 

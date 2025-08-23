@@ -1,4 +1,4 @@
-module github.com/cosmos/evm/evmd
+module github.com/mail-chat-chain/mailchatd
 
 go 1.23.8
 

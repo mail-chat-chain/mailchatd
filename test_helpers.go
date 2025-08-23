@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cosmos/evm/evmd/cmd/evmd/config"
+	"github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 	testconfig "github.com/cosmos/evm/testutil/config"
 	"github.com/stretchr/testify/require"
 

@@ -5,8 +5,8 @@ import (
 
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/evm"
-	"github.com/cosmos/evm/evmd"
-	"github.com/cosmos/evm/evmd/cmd/evmd/config"
+	"github.com/mail-chat-chain/mailchatd"
+	"github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 	testconfig "github.com/cosmos/evm/testutil/config"
 	"github.com/cosmos/evm/testutil/constants"
 	feemarkettypes "github.com/cosmos/evm/x/feemarket/types"

@@ -26,8 +26,8 @@ import (
 	clientkeys "github.com/cosmos/evm/client/keys"
 	"github.com/cosmos/evm/crypto/hd"
 	cosmosevmkeyring "github.com/cosmos/evm/crypto/keyring"
-	"github.com/cosmos/evm/evmd"
-	"github.com/cosmos/evm/evmd/tests/ledger/mocks"
+	"github.com/mail-chat-chain/mailchatd"
+	"github.com/mail-chat-chain/mailchatd/tests/ledger/mocks"
 	"github.com/cosmos/evm/testutil/constants"
 	utiltx "github.com/cosmos/evm/testutil/tx"
 

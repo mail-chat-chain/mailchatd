@@ -7,8 +7,8 @@ import (
 
 	"github.com/cosmos/evm/ante"
 	ethante "github.com/cosmos/evm/ante/evm"
-	evmdante "github.com/cosmos/evm/evmd/ante"
-	"github.com/cosmos/evm/evmd/tests/integration"
+	evmdante "github.com/mail-chat-chain/mailchatd/ante"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	basefactory "github.com/cosmos/evm/testutil/integration/base/factory"
 	"github.com/cosmos/evm/testutil/integration/evm/factory"
 	"github.com/cosmos/evm/testutil/integration/evm/grpc"

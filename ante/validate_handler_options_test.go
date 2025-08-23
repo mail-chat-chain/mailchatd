@@ -8,7 +8,7 @@ import (
 
 	"github.com/cosmos/evm/ante"
 	ethante "github.com/cosmos/evm/ante/evm"
-	"github.com/cosmos/evm/evmd/tests/integration"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/testutil/integration/evm/network"
 	"github.com/cosmos/evm/types"
 )

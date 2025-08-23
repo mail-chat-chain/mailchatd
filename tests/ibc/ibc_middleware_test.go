@@ -11,8 +11,8 @@ import (
 	testifysuite "github.com/stretchr/testify/suite"
 
 	"github.com/cosmos/evm/contracts"
-	"github.com/cosmos/evm/evmd"
-	"github.com/cosmos/evm/evmd/tests/integration"
+	"github.com/mail-chat-chain/mailchatd"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/ibc"
 	"github.com/cosmos/evm/testutil"
 	evmibctesting "github.com/cosmos/evm/testutil/ibc"

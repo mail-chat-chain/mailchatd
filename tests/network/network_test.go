@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/suite"
 
-	cosmosevmnetwork "github.com/cosmos/evm/evmd/tests/network"
+	cosmosevmnetwork "github.com/mail-chat-chain/mailchatd/tests/network"
 	"github.com/cosmos/evm/server/config"
 )
 
