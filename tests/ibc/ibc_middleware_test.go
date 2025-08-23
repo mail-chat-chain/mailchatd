@@ -11,7 +11,7 @@ import (
 	testifysuite "github.com/stretchr/testify/suite"
 
 	"github.com/cosmos/evm/contracts"
-	"github.com/cosmos/evm/evmd"
+	"github.com/mail-coin/mailchatd"
 	"github.com/cosmos/evm/ibc"
 	"github.com/cosmos/evm/testutil"
 	evmibctesting "github.com/cosmos/evm/testutil/ibc"

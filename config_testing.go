@@ -6,7 +6,7 @@ package evmd
 import (
 	"fmt"
 
-	"github.com/cosmos/evm/cmd/evmd/config"
+	"github.com/mail-coin/mailchatd/cmd/mailchatd/config"
 	evmtypes "github.com/cosmos/evm/x/vm/types"
 
 	"cosmossdk.io/math"

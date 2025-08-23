@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cosmos/evm/cmd/evmd/cmd"
-	evmdconfig "github.com/cosmos/evm/cmd/evmd/config"
-	"github.com/cosmos/evm/evmd"
+	"github.com/mail-coin/mailchatd/cmd/mailchatd/cmd"
+	evmdconfig "github.com/mail-coin/mailchatd/cmd/mailchatd/config"
+	"github.com/mail-coin/mailchatd"
 
 	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
 	sdk "github.com/cosmos/cosmos-sdk/types"

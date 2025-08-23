@@ -3,7 +3,7 @@ package integration
 import (
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/evm"
-	"github.com/cosmos/evm/evmd"
+	"github.com/mail-coin/mailchatd"
 
 	"cosmossdk.io/log"
 
