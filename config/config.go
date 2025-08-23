@@ -12,23 +12,23 @@ import (
 // chain id
 var ChainsCoinInfo = map[uint64]evmtypes.EvmCoinInfo{
 	EighteenDecimalsChainID: {
-		Denom:         ExampleChainDenom,
-		ExtendedDenom: ExampleChainDenom,
-		DisplayDenom:  ExampleDisplayDenom,
+		Denom:         BaseDenom,
+		ExtendedDenom: BaseDenom,
+		DisplayDenom:  DisplayDenom,
 		Decimals:      evmtypes.EighteenDecimals,
 	},
 	// SixDecimalsChainID provides a chain ID which is being set up with 6 decimals
 	SixDecimalsChainID: {
-		Denom:         "utest",
-		ExtendedDenom: "atest",
-		DisplayDenom:  "test",
+		Denom:         BaseDenom,
+		ExtendedDenom: BaseDenom,
+		DisplayDenom:  DisplayDenom,
 		Decimals:      evmtypes.SixDecimals,
 	},
 	// EVMChainID provides a chain ID used for internal testing
 	EVMChainID: {
-		Denom:         "atest",
-		ExtendedDenom: "atest",
-		DisplayDenom:  "test",
+		Denom:         BaseDenom,
+		ExtendedDenom: BaseDenom,
+		DisplayDenom:  DisplayDenom,
 		Decimals:      evmtypes.EighteenDecimals,
 	},
 }
@@ -56,7 +56,7 @@ const (
 	// BaseDenomUnit defines the precision of the base denomination.
 	BaseDenomUnit = 18
 	// EVMChainID defines the EIP-155 replay-protection chain id for the current ethereum chain config.
-	EVMChainID = 262144
+	EVMChainID = 26000
 )
 
 // SetBech32Prefixes sets the global prefixes to be used when serializing addresses and public keys to Bech32 strings.

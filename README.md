@@ -18,7 +18,7 @@ By default, this chain has the following configuration:
 | Chain ID            | `cosmos_262144-1`      |
 | Custom Opcodes      | -                      |
 | Default Token Pairs | 1 for the native token |
-| Denomination        | `atest`                |
+| Denomination        | `amcc`                |
 | EVM permissioning   | permissionless         |
 | Enabled Precompiles | all                    |
 
