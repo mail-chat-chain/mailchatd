@@ -20,7 +20,6 @@ import (
 	cosmosevmante "github.com/cosmos/evm/ante/evm"
 	evmconfig "github.com/cosmos/evm/config"
 	evmosencoding "github.com/cosmos/evm/encoding"
-	"github.com/mail-chat-chain/mailchatd/ante"
 	evmmempool "github.com/cosmos/evm/mempool"
 	srvflags "github.com/cosmos/evm/server/flags"
 	cosmosevmtypes "github.com/cosmos/evm/types"
@@ -32,9 +31,9 @@ import (
 	feemarketkeeper "github.com/cosmos/evm/x/feemarket/keeper"
 	feemarkettypes "github.com/cosmos/evm/x/feemarket/types"
 	ibccallbackskeeper "github.com/cosmos/evm/x/ibc/callbacks/keeper"
+	"github.com/mail-chat-chain/mailchatd/ante"
 
 	// NOTE: override ICS20 keeper to support IBC transfers of ERC20 tokens
-	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 	"github.com/cosmos/evm/x/ibc/transfer"
 	transferkeeper "github.com/cosmos/evm/x/ibc/transfer/keeper"
 	transferv2 "github.com/cosmos/evm/x/ibc/transfer/v2"
@@ -57,6 +56,7 @@ import (
 	ibckeeper "github.com/cosmos/ibc-go/v10/modules/core/keeper"
 	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
 	ibctesting "github.com/cosmos/ibc-go/v10/testing"
+	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 
 	autocliv1 "cosmossdk.io/api/cosmos/autocli/v1"
 	reflectionv1 "cosmossdk.io/api/cosmos/reflection/v1"
@@ -141,13 +141,13 @@ func init() {
 	// manually update the power reduction by replacing micro (u) -> atto (a) evmos
 	sdk.DefaultPowerReduction = cosmosevmtypes.AttoPowerReduction
 
-	defaultNodeHome = evmdconfig.MustGetDefaultNodeHome()
+	DefaultNodeHome = evmdconfig.MustGetDefaultNodeHome()
 }
 
-const appName = "evmd"
+const AppName = "evmd"
 
-// defaultNodeHome default home directories for the application daemon
-var defaultNodeHome string
+// DefaultNodeHome default home directories for the application daemon
+var DefaultNodeHome string
 
 var (
 	_ runtime.AppI                = (*EVMD)(nil)
@@ -210,8 +210,8 @@ type EVMD struct {
 	configurator module.Configurator
 }
 
-// NewExampleApp returns a reference to an initialized EVMD.
-func NewExampleApp(
+// NewEVMApp returns a reference to an initialized EVMD.
+func NewEVMApp(
 	logger log.Logger,
 	db dbm.DB,
 	traceStore io.Writer,
@@ -255,7 +255,7 @@ func NewExampleApp(
 	// baseAppOptions = append(baseAppOptions, prepareOpt)
 
 	bApp := baseapp.NewBaseApp(
-		appName,
+		AppName,
 		logger,
 		db,
 		// use transaction decoder to support the sdk.Tx interface instead of sdk.StdTx

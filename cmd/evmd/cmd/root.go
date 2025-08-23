@@ -16,10 +16,10 @@ import (
 	dbm "github.com/cosmos/cosmos-db"
 	cosmosevmcmd "github.com/cosmos/evm/client"
 	cosmosevmkeyring "github.com/cosmos/evm/crypto/keyring"
-	"github.com/mail-chat-chain/mailchatd"
-	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 	cosmosevmserver "github.com/cosmos/evm/server"
 	srvflags "github.com/cosmos/evm/server/flags"
+	evmd "github.com/mail-chat-chain/mailchatd"
+	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/store"
@@ -57,7 +57,7 @@ func NewRootCmd() *cobra.Command {
 	noOpEvmAppOptions := func(_ uint64) error {
 		return nil
 	}
-	tempApp := evmd.NewExampleApp(
+	tempApp := evmd.NewEVMApp(
 		log.NewNopLogger(),
 		dbm.NewMemDB(),
 		nil,
@@ -316,7 +316,7 @@ func newApp(
 		baseapp.SetChainID(chainID),
 	}
 
-	return evmd.NewExampleApp(
+	return evmd.NewEVMApp(
 		logger, db, traceStore, true,
 		appOpts,
 		evmdconfig.EVMChainID,
@@ -361,13 +361,13 @@ func appExport(
 	}
 
 	if height != -1 {
-		exampleApp = evmd.NewExampleApp(logger, db, traceStore, false, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
+		exampleApp = evmd.NewEVMApp(logger, db, traceStore, false, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
 
 		if err := exampleApp.LoadHeight(height); err != nil {
 			return servertypes.ExportedApp{}, err
 		}
 	} else {
-		exampleApp = evmd.NewExampleApp(logger, db, traceStore, true, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
+		exampleApp = evmd.NewEVMApp(logger, db, traceStore, true, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
 	}
 
 	return exampleApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs, modulesToExport)

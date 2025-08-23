@@ -5,12 +5,12 @@ import (
 
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/evm"
-	"github.com/mail-chat-chain/mailchatd"
-	"github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 	testconfig "github.com/cosmos/evm/testutil/config"
 	"github.com/cosmos/evm/testutil/constants"
 	feemarkettypes "github.com/cosmos/evm/x/feemarket/types"
 	ibctesting "github.com/cosmos/ibc-go/v10/testing"
+	evmd "github.com/mail-chat-chain/mailchatd"
+	"github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 
 	clienthelpers "cosmossdk.io/client/v2/helpers"
 	"cosmossdk.io/log"
@@ -36,7 +36,7 @@ func CreateEvmd(chainID string, evmChainID uint64, customBaseAppOptions ...func(
 
 	baseAppOptions := append(customBaseAppOptions, baseapp.SetChainID(chainID))
 
-	return evmd.NewExampleApp(
+	return evmd.NewEVMApp(
 		logger,
 		db,
 		nil,
@@ -51,7 +51,7 @@ func CreateEvmd(chainID string, evmChainID uint64, customBaseAppOptions ...func(
 // SetupEvmd initializes a new evmd app with default genesis state.
 // It is used in IBC integration tests to create a new evmd app instance.
 func SetupEvmd() (ibctesting.TestingApp, map[string]json.RawMessage) {
-	app := evmd.NewExampleApp(
+	app := evmd.NewEVMApp(
 		log.NewNopLogger(),
 		dbm.NewMemDB(),
 		nil,

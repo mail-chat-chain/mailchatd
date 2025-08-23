@@ -28,12 +28,12 @@ import (
 
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/evm/crypto/hd"
-	"github.com/mail-chat-chain/mailchatd"
-	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 	"github.com/cosmos/evm/server/config"
 	testconfig "github.com/cosmos/evm/testutil/config"
 	testconstants "github.com/cosmos/evm/testutil/constants"
 	cosmosevmtypes "github.com/cosmos/evm/types"
+	evmd "github.com/mail-chat-chain/mailchatd"
+	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/math"
@@ -110,7 +110,7 @@ func DefaultConfig() Config {
 		panic(fmt.Sprintf("failed creating temporary directory: %v", err))
 	}
 	defer os.RemoveAll(dir)
-	tempApp := evmd.NewExampleApp(log.NewNopLogger(), dbm.NewMemDB(), nil, true, simutils.NewAppOptionsWithFlagHome(dir), evmChainID, testconfig.EvmAppOptions, baseapp.SetChainID(chainID))
+	tempApp := evmd.NewEVMApp(log.NewNopLogger(), dbm.NewMemDB(), nil, true, simutils.NewAppOptionsWithFlagHome(dir), evmChainID, testconfig.EvmAppOptions, baseapp.SetChainID(chainID))
 
 	cfg := Config{
 		Codec:             tempApp.AppCodec(),
@@ -140,7 +140,7 @@ func DefaultConfig() Config {
 // NewAppConstructor returns a new Cosmos EVM AppConstructor
 func NewAppConstructor(chainID string, evmChainID uint64) AppConstructor {
 	return func(val Validator) servertypes.Application {
-		return evmd.NewExampleApp(
+		return evmd.NewEVMApp(
 			val.Ctx.Logger, dbm.NewMemDB(), nil, true,
 			simutils.NewAppOptionsWithFlagHome(val.Ctx.Config.RootDir),
 			evmChainID,
