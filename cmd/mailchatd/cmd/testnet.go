@@ -13,7 +13,7 @@ import (
 	cosmosevmkeyring "github.com/cosmos/evm/crypto/keyring"
 	cosmosevmserverconfig "github.com/cosmos/evm/server/config"
 	evmd "github.com/mail-chat-chain/mailchatd/app"
-	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
+	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 

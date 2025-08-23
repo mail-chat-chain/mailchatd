@@ -33,7 +33,7 @@ import (
 	testconstants "github.com/cosmos/evm/testutil/constants"
 	cosmosevmtypes "github.com/cosmos/evm/types"
 	evmd "github.com/mail-chat-chain/mailchatd/app"
-	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
+	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/math"

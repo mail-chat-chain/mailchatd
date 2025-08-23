@@ -3,11 +3,11 @@ package evmd
 import (
 	"encoding/json"
 
-	"github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
 	testconstants "github.com/cosmos/evm/testutil/constants"
 	erc20types "github.com/cosmos/evm/x/erc20/types"
 	feemarkettypes "github.com/cosmos/evm/x/feemarket/types"
 	evmtypes "github.com/cosmos/evm/x/vm/types"
+	"github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
 
 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 )

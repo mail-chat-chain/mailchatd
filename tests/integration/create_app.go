@@ -10,7 +10,7 @@ import (
 	feemarkettypes "github.com/cosmos/evm/x/feemarket/types"
 	ibctesting "github.com/cosmos/ibc-go/v10/testing"
 	evmd "github.com/mail-chat-chain/mailchatd/app"
-	"github.com/mail-chat-chain/mailchatd/cmd/evmd/config"
+	"github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
 
 	clienthelpers "cosmossdk.io/client/v2/helpers"
 	"cosmossdk.io/log"
