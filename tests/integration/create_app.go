@@ -2,6 +2,7 @@ package integration
 
 import (
 	"encoding/json"
+	"fmt"
 
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/evm"
@@ -10,7 +11,7 @@ import (
 	feemarkettypes "github.com/cosmos/evm/x/feemarket/types"
 	ibctesting "github.com/cosmos/ibc-go/v10/testing"
 	app "github.com/mail-chat-chain/mailchatd/app"
-	"github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
+	"github.com/mail-chat-chain/mailchatd/config"
 
 	clienthelpers "cosmossdk.io/client/v2/helpers"
 	"cosmossdk.io/log"
@@ -24,7 +25,7 @@ import (
 // CreateEvmd creates an evm app for regular integration tests (non-mempool)
 // This version uses a noop mempool to avoid state issues during transaction processing
 func CreateEvmd(chainID string, evmChainID uint64, customBaseAppOptions ...func(*baseapp.BaseApp)) evm.EvmApp {
-	defaultNodeHome, err := clienthelpers.GetNodeHomeDirectory(".evmd")
+	defaultNodeHome, err := clienthelpers.GetNodeHomeDirectory(fmt.Sprintf(".%s", config.AppName))
 	if err != nil {
 		panic(err)
 	}

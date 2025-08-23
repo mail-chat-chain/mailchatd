@@ -13,7 +13,7 @@ import (
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 	app "github.com/mail-chat-chain/mailchatd/app"
-	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
+	config "github.com/mail-chat-chain/mailchatd/config"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 
@@ -94,8 +94,8 @@ func (a appCreator) newApp(
 		traceStore,
 		true,
 		simtestutil.EmptyAppOptions{},
-		evmdconfig.EVMChainID,
-		evmdconfig.EvmAppOptions,
+		config.EVMChainID,
+		config.EvmAppOptions,
 		baseappOptions...,
 	)
 }
@@ -137,8 +137,8 @@ func (a appCreator) appExport(
 		traceStore,
 		loadLatest,
 		appOpts,
-		evmdconfig.EVMChainID,
-		evmdconfig.EvmAppOptions,
+		config.EVMChainID,
+		config.EvmAppOptions,
 	)
 
 	if height != -1 {

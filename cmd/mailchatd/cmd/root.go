@@ -19,7 +19,7 @@ import (
 	cosmosevmserver "github.com/cosmos/evm/server"
 	srvflags "github.com/cosmos/evm/server/flags"
 	app "github.com/mail-chat-chain/mailchatd/app"
-	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
+	evmdconfig "github.com/mail-chat-chain/mailchatd/config"
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/store"

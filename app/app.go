@@ -56,7 +56,7 @@ import (
 	ibckeeper "github.com/cosmos/ibc-go/v10/modules/core/keeper"
 	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
 	ibctesting "github.com/cosmos/ibc-go/v10/testing"
-	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
+	evmdconfig "github.com/mail-chat-chain/mailchatd/config"
 
 	autocliv1 "cosmossdk.io/api/cosmos/autocli/v1"
 	reflectionv1 "cosmossdk.io/api/cosmos/reflection/v1"
@@ -143,8 +143,6 @@ func init() {
 
 	DefaultNodeHome = evmdconfig.MustGetDefaultNodeHome()
 }
-
-const AppName = "mailchatd"
 
 // DefaultNodeHome default home directories for the application daemon
 var DefaultNodeHome string
@@ -255,7 +253,7 @@ func NewEVMApp(
 	// baseAppOptions = append(baseAppOptions, prepareOpt)
 
 	bApp := baseapp.NewBaseApp(
-		AppName,
+		evmdconfig.AppName,
 		logger,
 		db,
 		// use transaction decoder to support the sdk.Tx interface instead of sdk.StdTx

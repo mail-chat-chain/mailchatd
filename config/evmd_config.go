@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"maps"
 	"sort"
 
@@ -25,7 +26,7 @@ import (
 )
 
 func MustGetDefaultNodeHome() string {
-	defaultNodeHome, err := clienthelpers.GetNodeHomeDirectory(".evmd")
+	defaultNodeHome, err := clienthelpers.GetNodeHomeDirectory(fmt.Sprintf(".%s", AppName))
 	if err != nil {
 		panic(err)
 	}

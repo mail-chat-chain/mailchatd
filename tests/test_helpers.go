@@ -8,7 +8,7 @@ import (
 	testconfig "github.com/cosmos/evm/testutil/config"
 	"github.com/mail-chat-chain/mailchatd/app"
 	evmapp "github.com/mail-chat-chain/mailchatd/app"
-	"github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
+	"github.com/mail-chat-chain/mailchatd/config"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/cometbft/cometbft/abci/types"
