@@ -34,7 +34,12 @@ var ChainsCoinInfo = map[uint64]evmtypes.EvmCoinInfo{
 }
 
 const (
+	// AppName defines the name of the application.
 	AppName = "mailchatd"
+	// AppVersion defines the version of the application.
+	Version = "0.1.0"
+	// BuildTags defines the build tags for the application.
+	BuildTags = "dev"
 	// Bech32Prefix defines the Bech32 prefix used for accounts on the exemplary Cosmos EVM blockchain.
 	Bech32Prefix = "cosmos"
 	// Bech32PrefixAccAddr defines the Bech32 prefix of an account's address.

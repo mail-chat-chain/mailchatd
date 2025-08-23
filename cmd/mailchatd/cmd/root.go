@@ -177,7 +177,7 @@ func initRootCmd(rootCmd *cobra.Command, evmApp *app.EVMD) {
 		return newApp(l, d, w, ao)
 	}
 	rootCmd.AddCommand(
-		genutilcli.InitCmd(evmApp.BasicModuleManager, defaultNodeHome),
+		InitCmd(evmApp.BasicModuleManager, defaultNodeHome),
 		genutilcli.Commands(evmApp.TxConfig(), evmApp.BasicModuleManager, defaultNodeHome),
 		cmtcli.NewCompletionCmd(rootCmd, true),
 		debug.Cmd(),

@@ -248,9 +248,9 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 fi
 
 # Start the node
-mailchatd start "$TRACE" \
-	--log_level $LOGLEVEL \
-	--minimum-gas-prices=0.0001amcc \
-	--home "$CHAINDIR" \
-	--json-rpc.api eth,txpool,personal,net,debug,web3 \
-	--chain-id "$CHAINID"
+# mailchatd start "$TRACE" \
+# 	--log_level $LOGLEVEL \
+# 	--minimum-gas-prices=0.0001amcc \
+# 	--home "$CHAINDIR" \
+# 	--json-rpc.api eth,txpool,personal,net,debug,web3 \
+# 	--chain-id "$CHAINID"

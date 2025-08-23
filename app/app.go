@@ -260,6 +260,11 @@ func NewEVMApp(
 		encodingConfig.TxConfig.TxDecoder(),
 		baseAppOptions...,
 	)
+	// set version
+	version.AppName = evmdconfig.AppName
+	version.Version = evmdconfig.Version
+	version.BuildTags = evmdconfig.BuildTags
+
 	bApp.SetCommitMultiStoreTracer(traceStore)
 	bApp.SetVersion(version.Version)
 	bApp.SetInterfaceRegistry(interfaceRegistry)
