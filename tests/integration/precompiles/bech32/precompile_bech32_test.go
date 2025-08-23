@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/tests/integration/precompiles/bech32"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 )
 
 func TestBech32PrecompileTestSuite(t *testing.T) {

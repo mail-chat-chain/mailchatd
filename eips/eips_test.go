@@ -13,8 +13,6 @@ import (
 	//nolint:revive // dot imports are fine for Ginkgo
 	. "github.com/onsi/gomega"
 
-	"github.com/mail-chat-chain/mailchatd/eips/testdata"
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	testconfig "github.com/cosmos/evm/testutil/config"
 	"github.com/cosmos/evm/testutil/integration/evm/factory"
 	"github.com/cosmos/evm/testutil/integration/evm/grpc"
@@ -23,6 +21,8 @@ import (
 	"github.com/cosmos/evm/testutil/keyring"
 	testutiltypes "github.com/cosmos/evm/testutil/types"
 	evmtypes "github.com/cosmos/evm/x/vm/types"
+	"github.com/mail-chat-chain/mailchatd/eips/testdata"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 
 	"github.com/cosmos/cosmos-sdk/crypto/types"
 )

@@ -172,25 +172,11 @@ else
 	go test -tags=test -mod=readonly $(ARGS) $(EXTRA_ARGS) $(TEST_PACKAGES)
 endif
 
-# Use the old Apple linker to workaround broken xcode - https://github.com/golang/go/issues/65169
-ifeq ($(OS_FAMILY),Darwin)
-  FUZZLDFLAGS := -ldflags=-extldflags=-Wl,-ld_classic
-endif
+# test-fuzz removed - x/precisebank module does not exist in this project
 
-test-fuzz:
-	go test -tags=test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzMintCoins ./x/precisebank/keeper
-	go test -tags=test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzBurnCoins ./x/precisebank/keeper
-	go test -tags=test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzSendCoins ./x/precisebank/keeper
-	go test -tags=test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzGenesisStateValidate_NonZeroRemainder ./x/precisebank/types
-	go test -tags=test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzGenesisStateValidate_ZeroRemainder ./x/precisebank/types
+# test-scripts removed - scripts directory does not exist in this project
 
-test-scripts:
-	@echo "Running scripts tests"
-	@pytest -s -vv ./scripts
-
-test-solidity:
-	@echo "Beginning solidity tests..."
-	./scripts/run-solidity-tests.sh
+# test-solidity removed - script does not exist in this project
 
 .PHONY: run-tests test test-all $(TEST_TARGETS)
 
@@ -205,84 +191,38 @@ benchmark:
 golangci_lint_cmd=golangci-lint
 golangci_version=v2.2.2
 
-lint: lint-go lint-python lint-contracts
+lint: lint-go
 
 lint-go:
 	@echo "--> Running linter"
 	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(golangci_version)
 	@$(golangci_lint_cmd) run --timeout=15m
 
-lint-python:
-	find . -name "*.py" -type f -not -path "*/node_modules/*" | xargs pylint
-	flake8
+# lint-python removed - no Python files in this project
 
-lint-contracts:
-	solhint contracts/**/*.sol
+# lint-contracts removed - contracts directory does not exist
 
 lint-fix:
 	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(golangci_version)
 	@$(golangci_lint_cmd) run --timeout=15m --fix
 
-lint-fix-contracts:
-	solhint --fix contracts/**/*.sol
+# lint-fix-contracts removed - contracts directory does not exist
 
 .PHONY: lint lint-fix lint-contracts lint-go lint-python
 
-format: format-go format-python format-shell
+format: format-go format-shell
 
 format-go:
 	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" -not -path "./client/docs/statik/statik.go" -not -name '*.pb.go' -not -name '*.pb.gw.go' -not -name '*.pulsar.go' | xargs gofumpt -w -l
 
-format-python: format-isort format-black
-
-format-black:
-	find . -name '*.py' -type f -not -path "*/node_modules/*" | xargs black
-
-format-isort:
-	find . -name '*.py' -type f -not -path "*/node_modules/*" | xargs isort
+# format-python, format-black, format-isort removed - no Python files in this project
 
 format-shell:
 	shfmt -l -w .
 
-.PHONY: format format-go format-python format-black format-isort format-go
+.PHONY: format format-go format-shell
 
-###############################################################################
-###                                Protobuf                                 ###
-###############################################################################
-
-protoVer=0.14.0
-protoImageName=ghcr.io/cosmos/proto-builder:$(protoVer)
-protoImage=$(DOCKER) run --rm -v $(CURDIR):/workspace --workdir /workspace --user 0 $(protoImageName)
-
-protoLintVer=0.44.0
-protoLinterImage=yoheimuta/protolint
-protoLinter=$(DOCKER) run --rm -v "$(CURDIR):/workspace" --workdir /workspace --user 0 $(protoLinterImage):$(protoLintVer)
-
-# ------
-# NOTE: If you are experiencing problems running these commands, try deleting
-#       the docker images and execute the desired command again.
-#
-proto-all: proto-format proto-lint proto-gen
-
-proto-gen:
-	@echo "generating implementations from Protobuf files"
-	@$(protoImage) sh ./scripts/generate_protos.sh
-	@$(protoImage) sh ./scripts/generate_protos_pulsar.sh
-
-proto-format:
-	@echo "formatting Protobuf files"
-	@$(protoImage) find ./ -name *.proto -exec clang-format -i {} \;
-
-proto-lint:
-	@echo "linting Protobuf files"
-	@$(protoImage) buf lint --error-format=json
-	@$(protoLinter) lint ./proto
-
-proto-check-breaking:
-	@echo "checking Protobuf files for breaking changes"
-	@$(protoImage) buf breaking --against $(HTTPS_GIT)#branch=main
-
-.PHONY: proto-all proto-gen proto-format proto-lint proto-check-breaking
+# Protobuf functionality removed - proto directory does not exist in this project
 
 ###############################################################################
 ###                                Releasing                                ###

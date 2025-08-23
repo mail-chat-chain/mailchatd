@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/tests/integration/precompiles/slashing"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 )
 
 func TestSlashingPrecompileTestSuite(t *testing.T) {

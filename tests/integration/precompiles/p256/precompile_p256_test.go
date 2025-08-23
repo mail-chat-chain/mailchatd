@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/tests/integration/precompiles/p256"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 )
 
 func TestP256PrecompileTestSuite(t *testing.T) {

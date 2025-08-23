@@ -1,8 +1,9 @@
 package mempool
 
 import (
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"testing"
+
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 
 	"github.com/stretchr/testify/suite"
 

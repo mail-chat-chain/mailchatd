@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	erc21 "github.com/cosmos/evm/tests/integration/precompiles/erc20"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 )
 
 func TestErc20PrecompileTestSuite(t *testing.T) {

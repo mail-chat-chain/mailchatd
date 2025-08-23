@@ -10,8 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	testifysuite "github.com/stretchr/testify/suite"
 
-	"github.com/mail-chat-chain/mailchatd/app"
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/testutil"
 	evmibctesting "github.com/cosmos/evm/testutil/ibc"
 	erc20Keeper "github.com/cosmos/evm/x/erc20/keeper"
@@ -22,6 +20,8 @@ import (
 	channeltypesv2 "github.com/cosmos/ibc-go/v10/modules/core/04-channel/v2/types"
 	ibctesting "github.com/cosmos/ibc-go/v10/testing"
 	ibcmockv2 "github.com/cosmos/ibc-go/v10/testing/mock/v2"
+	"github.com/mail-chat-chain/mailchatd/app"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 
 	"cosmossdk.io/math"
 

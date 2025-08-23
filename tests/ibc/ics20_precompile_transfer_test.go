@@ -13,14 +13,14 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mail-chat-chain/mailchatd/app"
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/precompiles/ics20"
 	chainutil "github.com/cosmos/evm/testutil"
 	evmibctesting "github.com/cosmos/evm/testutil/ibc"
 	evmante "github.com/cosmos/evm/x/vm/ante"
 	transfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
 	clienttypes "github.com/cosmos/ibc-go/v10/modules/core/02-client/types"
+	"github.com/mail-chat-chain/mailchatd/app"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 
 	sdkmath "cosmossdk.io/math"
 

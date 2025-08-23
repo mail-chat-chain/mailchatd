@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/tests/integration/ante"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 )
 
 func TestEvmUnitAnteTestSuite(t *testing.T) {
