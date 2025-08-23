@@ -12,7 +12,7 @@ import (
 	cosmosevmhd "github.com/cosmos/evm/crypto/hd"
 	cosmosevmkeyring "github.com/cosmos/evm/crypto/keyring"
 	cosmosevmserverconfig "github.com/cosmos/evm/server/config"
-	evmd "github.com/mail-chat-chain/mailchatd/app"
+	evmapp "github.com/mail-chat-chain/mailchatd/app"
 	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -674,7 +674,7 @@ func NewTestNetworkFixture() network.TestFixture {
 	}
 	defer os.RemoveAll(dir)
 
-	app := evmd.NewEVMApp(
+	app := evmapp.NewEVMApp(
 		log.NewNopLogger(),
 		dbm.NewMemDB(),
 		nil,
@@ -685,7 +685,7 @@ func NewTestNetworkFixture() network.TestFixture {
 	)
 
 	appCtr := func(val network.ValidatorI) servertypes.Application {
-		return evmd.NewEVMApp(
+		return evmapp.NewEVMApp(
 			log.NewNopLogger(),
 			dbm.NewMemDB(),
 			nil,

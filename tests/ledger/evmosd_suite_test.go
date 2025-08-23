@@ -28,7 +28,7 @@ import (
 	cosmosevmkeyring "github.com/cosmos/evm/crypto/keyring"
 	"github.com/cosmos/evm/testutil/constants"
 	utiltx "github.com/cosmos/evm/testutil/tx"
-	evmd "github.com/mail-chat-chain/mailchatd/app"
+	app "github.com/mail-chat-chain/mailchatd/app"
 	"github.com/mail-chat-chain/mailchatd/tests/ledger/mocks"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -48,7 +48,7 @@ var s *LedgerTestSuite
 type LedgerTestSuite struct {
 	suite.Suite
 
-	app *evmd.EVMD
+	app *app.EVMD
 	ctx sdk.Context
 
 	ledger       *mocks.SECP256K1

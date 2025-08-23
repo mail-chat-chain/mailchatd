@@ -18,7 +18,7 @@ import (
 	cosmosevmkeyring "github.com/cosmos/evm/crypto/keyring"
 	cosmosevmserver "github.com/cosmos/evm/server"
 	srvflags "github.com/cosmos/evm/server/flags"
-	evmd "github.com/mail-chat-chain/mailchatd/app"
+	app "github.com/mail-chat-chain/mailchatd/app"
 	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
 
 	"cosmossdk.io/log"
@@ -48,7 +48,7 @@ import (
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 )
 
-// NewRootCmd creates a new root command for evmd. It is called once in the
+// NewRootCmd creates a new root command for app. It is called once in the
 // main function.
 func NewRootCmd() *cobra.Command {
 	// we "pre"-instantiate the application for getting the injected/configured encoding configuration
@@ -57,7 +57,7 @@ func NewRootCmd() *cobra.Command {
 	noOpEvmAppOptions := func(_ uint64) error {
 		return nil
 	}
-	tempApp := evmd.NewEVMApp(
+	tempApp := app.NewEVMApp(
 		log.NewNopLogger(),
 		dbm.NewMemDB(),
 		nil,
@@ -168,7 +168,7 @@ func initCometConfig() *cmtcfg.Config {
 	return cfg
 }
 
-func initRootCmd(rootCmd *cobra.Command, evmApp *evmd.EVMD) {
+func initRootCmd(rootCmd *cobra.Command, evmApp *app.EVMD) {
 	cfg := sdk.GetConfig()
 	cfg.Seal()
 
@@ -316,7 +316,7 @@ func newApp(
 		baseapp.SetChainID(chainID),
 	}
 
-	return evmd.NewEVMApp(
+	return app.NewEVMApp(
 		logger, db, traceStore, true,
 		appOpts,
 		evmdconfig.EVMChainID,
@@ -336,7 +336,7 @@ func appExport(
 	appOpts servertypes.AppOptions,
 	modulesToExport []string,
 ) (servertypes.ExportedApp, error) {
-	var exampleApp *evmd.EVMD
+	var exampleApp *app.EVMD
 
 	// this check is necessary as we use the flag in x/upgrade.
 	// we can exit more gracefully by checking the flag here.
@@ -361,13 +361,13 @@ func appExport(
 	}
 
 	if height != -1 {
-		exampleApp = evmd.NewEVMApp(logger, db, traceStore, false, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
+		exampleApp = app.NewEVMApp(logger, db, traceStore, false, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
 
 		if err := exampleApp.LoadHeight(height); err != nil {
 			return servertypes.ExportedApp{}, err
 		}
 	} else {
-		exampleApp = evmd.NewEVMApp(logger, db, traceStore, true, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
+		exampleApp = app.NewEVMApp(logger, db, traceStore, true, appOpts, evmdconfig.EVMChainID, evmdconfig.EvmAppOptions, baseapp.SetChainID(chainID))
 	}
 
 	return exampleApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs, modulesToExport)

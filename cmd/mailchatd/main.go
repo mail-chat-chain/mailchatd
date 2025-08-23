@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	evmd "github.com/mail-chat-chain/mailchatd/app"
+	app "github.com/mail-chat-chain/mailchatd/app"
 	"github.com/mail-chat-chain/mailchatd/cmd/mailchatd/cmd"
 	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
 
@@ -16,7 +16,7 @@ func main() {
 	setupSDKConfig()
 
 	rootCmd := cmd.NewRootCmd()
-	if err := svrcmd.Execute(rootCmd, evmd.AppName, evmdconfig.MustGetDefaultNodeHome()); err != nil {
+	if err := svrcmd.Execute(rootCmd, app.AppName, evmdconfig.MustGetDefaultNodeHome()); err != nil {
 		fmt.Fprintln(rootCmd.OutOrStderr(), err)
 		os.Exit(1)
 	}

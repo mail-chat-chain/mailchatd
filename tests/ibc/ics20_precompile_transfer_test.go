@@ -45,7 +45,7 @@ func (suite *ICS20TransferTestSuite) SetupTest() {
 	suite.chainA = suite.coordinator.GetChain(evmibctesting.GetEvmChainID(1))
 	suite.chainB = suite.coordinator.GetChain(evmibctesting.GetEvmChainID(2))
 
-	evmAppA := suite.chainA.App.(*evmd.EVMD)
+	evmAppA := suite.chainA.App.(*app.EVMD)
 	suite.chainAPrecompile, _ = ics20.NewPrecompile(
 		evmAppA.BankKeeper,
 		*evmAppA.StakingKeeper,
@@ -53,7 +53,7 @@ func (suite *ICS20TransferTestSuite) SetupTest() {
 		evmAppA.IBCKeeper.ChannelKeeper,
 		evmAppA.EVMKeeper,
 	)
-	evmAppB := suite.chainB.App.(*evmd.EVMD)
+	evmAppB := suite.chainB.App.(*app.EVMD)
 	suite.chainBPrecompile, _ = ics20.NewPrecompile(
 		evmAppB.BankKeeper,
 		*evmAppB.StakingKeeper,
@@ -83,7 +83,7 @@ func (suite *ICS20TransferTestSuite) TestHandleMsgTransfer() {
 		{
 			"transfer single denom",
 			func(_ evmibctesting.SenderAccount) {
-				evmAppA := suite.chainA.App.(*evmd.EVMD)
+				evmAppA := suite.chainA.App.(*app.EVMD)
 				sourceDenomToTransfer, err = evmAppA.StakingKeeper.BondDenom(suite.chainA.GetContext())
 				msgAmount = evmibctesting.DefaultCoinAmount
 			},
@@ -92,7 +92,7 @@ func (suite *ICS20TransferTestSuite) TestHandleMsgTransfer() {
 			"transfer amount larger than int64",
 			func(_ evmibctesting.SenderAccount) {
 				var ok bool
-				evmAppA := suite.chainA.App.(*evmd.EVMD)
+				evmAppA := suite.chainA.App.(*app.EVMD)
 				sourceDenomToTransfer, err = evmAppA.StakingKeeper.BondDenom(suite.chainA.GetContext())
 				msgAmount, ok = sdkmath.NewIntFromString("9223372036854775808") // 2^63 (one above int64)
 				suite.Require().True(ok)
@@ -101,7 +101,7 @@ func (suite *ICS20TransferTestSuite) TestHandleMsgTransfer() {
 		{
 			"transfer entire balance",
 			func(_ evmibctesting.SenderAccount) {
-				evmAppA := suite.chainA.App.(*evmd.EVMD)
+				evmAppA := suite.chainA.App.(*app.EVMD)
 				sourceDenomToTransfer, err = evmAppA.StakingKeeper.BondDenom(suite.chainA.GetContext())
 				msgAmount = transfertypes.UnboundedSpendLimit()
 			},
@@ -135,7 +135,7 @@ func (suite *ICS20TransferTestSuite) TestHandleMsgTransfer() {
 
 			tc.malleate(senderAccount)
 
-			evmAppA := suite.chainA.App.(*evmd.EVMD)
+			evmAppA := suite.chainA.App.(*app.EVMD)
 
 			GetBalance := func(addr sdk.AccAddress) sdk.Coin {
 				ctx := suite.chainA.GetContext()
@@ -216,7 +216,7 @@ func (suite *ICS20TransferTestSuite) TestHandleMsgTransfer() {
 			suite.Require().Equal(transferAmount.String(), chainAEscrowBalance.Amount.String())
 
 			// check that voucher exists on chain B
-			evmAppB := suite.chainB.App.(*evmd.EVMD)
+			evmAppB := suite.chainB.App.(*app.EVMD)
 			chainBDenom := transfertypes.NewDenom(originalCoin.Denom, traceAToB)
 			chainBBalance := evmAppB.BankKeeper.GetBalance(
 				suite.chainB.GetContext(),

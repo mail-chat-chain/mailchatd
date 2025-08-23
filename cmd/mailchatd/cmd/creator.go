@@ -12,7 +12,7 @@ import (
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
-	evmd "github.com/mail-chat-chain/mailchatd/app"
+	app "github.com/mail-chat-chain/mailchatd/app"
 	evmdconfig "github.com/mail-chat-chain/mailchatd/cmd/mailchatd/config"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
@@ -88,7 +88,7 @@ func (a appCreator) newApp(
 		baseapp.SetIAVLCacheSize(cast.ToInt(appOpts.Get(server.FlagIAVLCacheSize))),
 	}
 
-	return evmd.NewEVMApp(
+	return app.NewEVMApp(
 		logger,
 		db,
 		traceStore,
@@ -110,7 +110,7 @@ func (a appCreator) appExport(
 	appOpts servertypes.AppOptions,
 	modulesToExport []string,
 ) (servertypes.ExportedApp, error) {
-	var evmApp *evmd.EVMD
+	var evmApp *app.EVMD
 
 	homePath, ok := appOpts.Get(flags.FlagHome).(string)
 	if !ok || homePath == "" {
@@ -131,7 +131,7 @@ func (a appCreator) appExport(
 		loadLatest = true
 	}
 
-	evmApp = evmd.NewEVMApp(
+	evmApp = app.NewEVMApp(
 		logger,
 		db,
 		traceStore,

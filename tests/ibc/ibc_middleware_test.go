@@ -11,8 +11,6 @@ import (
 	testifysuite "github.com/stretchr/testify/suite"
 
 	"github.com/cosmos/evm/contracts"
-	"github.com/mail-chat-chain/mailchatd/app"
-	"github.com/mail-chat-chain/mailchatd/tests/integration"
 	"github.com/cosmos/evm/ibc"
 	"github.com/cosmos/evm/testutil"
 	evmibctesting "github.com/cosmos/evm/testutil/ibc"
@@ -28,6 +26,8 @@ import (
 	clienttypes "github.com/cosmos/ibc-go/v10/modules/core/02-client/types"
 	channeltypes "github.com/cosmos/ibc-go/v10/modules/core/04-channel/types"
 	ibctesting "github.com/cosmos/ibc-go/v10/testing"
+	"github.com/mail-chat-chain/mailchatd/app"
+	"github.com/mail-chat-chain/mailchatd/tests/integration"
 
 	"cosmossdk.io/math"
 
@@ -381,7 +381,7 @@ func (suite *MiddlewareTestSuite) TestOnRecvPacketWithCallback() {
 			)
 
 			// Validate successful callback
-			evmApp := suite.evmChainA.App.(*evmd.EVMD)
+			evmApp := suite.evmChainA.App.(*app.EVMD)
 			singleTokenRepresentation, err := types.NewTokenPairSTRv2(voucherDenom)
 			suite.Require().NoError(err)
 			erc20Contract := singleTokenRepresentation.GetERC20Contract()
@@ -542,7 +542,7 @@ func (suite *MiddlewareTestSuite) TestOnRecvPacket() {
 
 				voucherDenom := testutil.GetVoucherDenomFromPacketData(data, packet.GetDestPort(), packet.GetDestChannel())
 
-				evmApp := suite.evmChainA.App.(*evmd.EVMD)
+				evmApp := suite.evmChainA.App.(*app.EVMD)
 				voucherCoin := evmApp.BankKeeper.GetBalance(ctxA, receiver, voucherDenom)
 				suite.Require().Equal(sendAmt.String(), voucherCoin.Amount.String())
 
@@ -574,7 +574,7 @@ func (suite *MiddlewareTestSuite) TestOnRecvPacketNativeErc20() {
 	nativeErc20 := SetupNativeErc20(suite.T(), suite.evmChainA, suite.evmChainA.SenderAccounts[0])
 
 	evmCtx := suite.evmChainA.GetContext()
-	evmApp := suite.evmChainA.App.(*evmd.EVMD)
+	evmApp := suite.evmChainA.App.(*app.EVMD)
 
 	// Scenario: Native ERC20 token transfer from evmChainA to chainB
 	timeoutHeight := clienttypes.NewHeight(1, 110)
@@ -998,7 +998,7 @@ func (suite *MiddlewareTestSuite) TestOnAcknowledgementPacketWithCallback() {
 			suite.SetupTest()
 
 			ctxA := suite.evmChainA.GetContext()
-			evmApp := suite.evmChainA.App.(*evmd.EVMD)
+			evmApp := suite.evmChainA.App.(*app.EVMD)
 
 			bondDenom, err := evmApp.StakingKeeper.BondDenom(ctxA)
 			suite.Require().NoError(err)
@@ -1226,7 +1226,7 @@ func (suite *MiddlewareTestSuite) TestOnAcknowledgementPacket() {
 			suite.SetupTest()
 
 			ctxA := suite.evmChainA.GetContext()
-			evmApp := suite.evmChainA.App.(*evmd.EVMD)
+			evmApp := suite.evmChainA.App.(*app.EVMD)
 
 			bondDenom, err := evmApp.StakingKeeper.BondDenom(ctxA)
 			suite.Require().NoError(err)
@@ -1378,7 +1378,7 @@ func (suite *MiddlewareTestSuite) TestOnAcknowledgementPacketNativeErc20() {
 			nativeErc20 := SetupNativeErc20(suite.T(), suite.evmChainA, suite.evmChainA.SenderAccounts[0])
 
 			evmCtx := suite.evmChainA.GetContext()
-			evmApp := suite.evmChainA.App.(*evmd.EVMD)
+			evmApp := suite.evmChainA.App.(*app.EVMD)
 
 			timeoutHeight := clienttypes.NewHeight(1, 110)
 			path := suite.path
@@ -1507,7 +1507,7 @@ func (suite *MiddlewareTestSuite) TestOnTimeoutPacket() {
 			suite.SetupTest()
 
 			ctxA := suite.evmChainA.GetContext()
-			evmApp := suite.evmChainA.App.(*evmd.EVMD)
+			evmApp := suite.evmChainA.App.(*app.EVMD)
 			bondDenom, err := evmApp.StakingKeeper.BondDenom(ctxA)
 			suite.Require().NoError(err)
 
@@ -1825,7 +1825,7 @@ func (suite *MiddlewareTestSuite) TestOnTimeoutPacketWithCallback() {
 			suite.SetupTest()
 
 			ctxA := suite.evmChainA.GetContext()
-			evmApp := suite.evmChainA.App.(*evmd.EVMD)
+			evmApp := suite.evmChainA.App.(*app.EVMD)
 
 			bondDenom, err := evmApp.StakingKeeper.BondDenom(ctxA)
 			suite.Require().NoError(err)
@@ -2025,7 +2025,7 @@ func (suite *MiddlewareTestSuite) TestOnTimeoutPacketNativeErc20() {
 			nativeErc20 := SetupNativeErc20(suite.T(), suite.evmChainA, suite.evmChainA.SenderAccounts[0])
 
 			evmCtx := suite.evmChainA.GetContext()
-			evmApp := suite.evmChainA.App.(*evmd.EVMD)
+			evmApp := suite.evmChainA.App.(*app.EVMD)
 
 			timeoutHeight := clienttypes.NewHeight(1, 110)
 			path := suite.path
