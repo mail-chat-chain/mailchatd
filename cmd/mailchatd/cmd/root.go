@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strconv"
 
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/spf13/cast"
@@ -148,7 +149,14 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	if initClientCtx.ChainID != "" {
-		if err := evmdconfig.EvmAppOptions(evmdconfig.EVMChainID); err != nil {
+		// Convert string chainID to uint64 for EVM module
+		evmChainID, err := strconv.ParseUint(initClientCtx.ChainID, 10, 64)
+		if err != nil {
+			// If conversion fails, fallback to default EVM Chain ID
+			evmChainID = evmdconfig.EVMChainID
+		}
+		
+		if err := evmdconfig.EvmAppOptions(evmChainID); err != nil {
 			panic(err)
 		}
 	}

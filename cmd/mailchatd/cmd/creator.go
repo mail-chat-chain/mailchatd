@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"path/filepath"
+	"strconv"
 
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -59,6 +60,13 @@ func (a appCreator) newApp(
 		chainID = appGenesis.ChainID
 	}
 
+	// Convert string chainID to uint64 for EVM module
+	evmChainID, err := strconv.ParseUint(chainID, 10, 64)
+	if err != nil {
+		// If conversion fails, fallback to default EVM Chain ID
+		evmChainID = config.EVMChainID
+	}
+
 	snapshotDir := filepath.Join(homeDir, "data", "snapshots")
 	snapshotDB, err := dbm.NewDB("metadata", server.GetAppDBBackend(appOpts), snapshotDir)
 	if err != nil {
@@ -94,7 +102,7 @@ func (a appCreator) newApp(
 		traceStore,
 		true,
 		simtestutil.EmptyAppOptions{},
-		config.EVMChainID,
+		evmChainID,
 		config.EvmAppOptions,
 		baseappOptions...,
 	)
@@ -131,13 +139,32 @@ func (a appCreator) appExport(
 		loadLatest = true
 	}
 
+	// Get chain ID for EVM module
+	chainID := cast.ToString(appOpts.Get(flags.FlagChainID))
+	if chainID == "" {
+		// fallback to genesis chain-id
+		genDocFile := filepath.Join(homePath, "config", "genesis.json")
+		appGenesis, err := genutiltypes.AppGenesisFromFile(genDocFile)
+		if err != nil {
+			return servertypes.ExportedApp{}, err
+		}
+		chainID = appGenesis.ChainID
+	}
+
+	// Convert string chainID to uint64 for EVM module
+	evmChainID, err := strconv.ParseUint(chainID, 10, 64)
+	if err != nil {
+		// If conversion fails, fallback to default EVM Chain ID
+		evmChainID = config.EVMChainID
+	}
+
 	evmApp = app.NewEVMApp(
 		logger,
 		db,
 		traceStore,
 		loadLatest,
 		appOpts,
-		config.EVMChainID,
+		evmChainID,
 		config.EvmAppOptions,
 	)
 

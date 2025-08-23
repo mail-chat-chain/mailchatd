@@ -241,16 +241,16 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	setup_client_config
 	setup_accounts
 	init_configure
-	update_genesis
-	optimize_network_timing
+	# update_genesis
+	# optimize_network_timing
 	allocate_accounts
 	setup_validator
 fi
 
-# Start the node
-# mailchatd start "$TRACE" \
-# 	--log_level $LOGLEVEL \
-# 	--minimum-gas-prices=0.0001amcc \
-# 	--home "$CHAINDIR" \
-# 	--json-rpc.api eth,txpool,personal,net,debug,web3 \
-# 	--chain-id "$CHAINID"
+# Start the node (chain-id is now auto-configured during init)
+mailchatd start \
+	--log_level $LOGLEVEL \
+	--minimum-gas-prices=0.0001amcc \
+	--home "$CHAINDIR" \
+	--json-rpc.api eth,txpool,personal,net,debug,web3 \
+	--chain-id "$CHAINID"

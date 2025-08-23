@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cosmos/go-bip39"
@@ -57,7 +58,7 @@ func InitCmd(bmm module.BasicManager, defaultNodeHome string) *cobra.Command {
 
 			chainID, _ := cmd.Flags().GetString(flags.FlagChainID)
 			if chainID == "" {
-				chainID = fmt.Sprintf("%s-%d", evmconfig.AppName, evmconfig.EVMChainID)
+				chainID = fmt.Sprintf("%d", evmconfig.EVMChainID)
 			}
 
 			// Get bip39 mnemonic
@@ -127,6 +128,11 @@ func InitCmd(bmm module.BasicManager, defaultNodeHome string) *cobra.Command {
 				return fmt.Errorf("failed to apply genesis configuration fixes: %w", err)
 			}
 
+			// Auto-configure client chain-id to avoid startup issues
+			if err := configureClientChainID(clientCtx.HomeDir, chainID); err != nil {
+				cmd.Printf("Warning: failed to auto-configure client chain-id: %v\n", err)
+			}
+
 			toPrint := newPrintInfo(config.Moniker, chainID, nodeID, "", appState)
 
 			cfg := cmtcfg.DefaultConfig()
@@ -188,7 +194,7 @@ func applyGenesisConfigFixes(genesisPath string, initialHeight int64) error {
 			"params": map[string]interface{}{
 				"block": map[string]interface{}{
 					"max_bytes": "22020096",
-					"max_gas":   "-1",
+					"max_gas":   "10000000",
 				},
 				"evidence": map[string]interface{}{
 					"max_age_num_blocks": "100000",
@@ -383,4 +389,49 @@ func initializeNodeValidatorFilesFromMnemonic(config *cmtcfg.Config, mnemonic st
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// configureClientChainID automatically configures the client chain-id
+// to prevent startup issues where chain-id parameter is required
+func configureClientChainID(homeDir, chainID string) error {
+	configDir := filepath.Join(homeDir, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+	
+	// Create client.toml with chain-id configuration
+	clientConfigFile := filepath.Join(configDir, "client.toml")
+	clientTomlContent := fmt.Sprintf(`chain-id = "%s"
+keyring-backend = "test"
+output = "text"
+node = "tcp://localhost:26657"
+broadcast-mode = "sync"
+`, chainID)
+	
+	if err := os.WriteFile(clientConfigFile, []byte(clientTomlContent), 0644); err != nil {
+		return fmt.Errorf("failed to write client config: %w", err)
+	}
+	
+	// Also update app.toml with chain-specific settings
+	appConfigFile := filepath.Join(configDir, "app.toml")
+	if _, err := os.Stat(appConfigFile); err == nil {
+		// Read existing app.toml
+		appContent, err := os.ReadFile(appConfigFile)
+		if err == nil {
+			// Enable APIs and set minimum gas prices
+			appStr := string(appContent)
+			// Enable JSON-RPC
+			if !strings.Contains(appStr, "enable = true") {
+				appStr = strings.ReplaceAll(appStr, "enable = false", "enable = true")
+			}
+			// Set minimum gas prices
+			if !strings.Contains(appStr, "minimum-gas-prices = ") {
+				appStr = strings.ReplaceAll(appStr, "minimum-gas-prices = \"\"", "minimum-gas-prices = \"0.0001amcc\"")
+			}
+			os.WriteFile(appConfigFile, []byte(appStr), 0644)
+		}
+	}
+	
+	fmt.Printf("✅ Auto-configured client chain-id: %s\n", chainID)
+	return nil
 }
