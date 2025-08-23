@@ -239,10 +239,10 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# Run setup functions in sequence
 	setup_client_config
-	setup_accounts
 	init_configure
 	# update_genesis
 	# optimize_network_timing
+	setup_accounts
 	allocate_accounts
 	setup_validator
 fi

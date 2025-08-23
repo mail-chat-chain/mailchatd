@@ -137,6 +137,8 @@ func InitCmd(bmm module.BasicManager, defaultNodeHome string) *cobra.Command {
 
 			cfg := cmtcfg.DefaultConfig()
 			cfg.SetRoot(clientCtx.HomeDir)
+			cfg.Consensus.TimeoutCommit = 3 * time.Second
+			
 			cmtcfg.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), cfg)
 
 			return displayInfo(toPrint)
