@@ -26,6 +26,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/module"
 
 	evmconfig "github.com/mail-chat-chain/mailchatd/config"
+	"github.com/mail-chat-chain/mailchatd/precompiles/account_abstraction"
 )
 
 const (
@@ -231,6 +232,7 @@ func applyGenesisConfigFixes(genesisPath string, initialHeight int64) error {
 				"0x0000000000000000000000000000000000000805",
 				"0x0000000000000000000000000000000000000806",
 				"0x0000000000000000000000000000000000000807",
+				account_abstraction.PrecompileAddress,
 			}
 		}
 		genesis.AppState["evm"], _ = json.Marshal(evmState)

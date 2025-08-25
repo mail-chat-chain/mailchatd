@@ -11,7 +11,8 @@
 7. [跨链桥（IBC）](#跨链桥ibc)
 8. [开发指南](#开发指南)
 9. [故障排除](#故障排除)
-10. [参考资源](#参考资源)
+10. [Account Abstraction (无 Bundler)](#account-abstraction-无-bundler)
+11. [参考资源](#参考资源)
 
 ---
 
@@ -28,6 +29,7 @@ MailChat Chain 是一个基于 Cosmos SDK v0.53.4 和 Ethereum Virtual Machine (
 | **高性能** | 基于 Tendermint BFT 共识，支持秒级确认 |
 | **模块化** | 灵活的模块系统，易于定制和扩展 |
 | **双重接口** | 同时支持 Cosmos SDK 和 Ethereum JSON-RPC |
+| **🆕 无 Bundler AA** | 世界首个无 bundler 的 Account Abstraction 实现 |
 
 ### 技术规格
 

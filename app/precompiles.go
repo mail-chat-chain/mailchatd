@@ -29,6 +29,9 @@ import (
 	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
 	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
+
+	// Account Abstraction precompile
+	aaprecompile "github.com/mail-chat-chain/mailchatd/precompiles/account_abstraction"
 )
 
 // Optionals define some optional params that can be applied to _some_ precompiles.
@@ -142,9 +145,13 @@ func NewAvailableStaticPrecompiles(
 		panic(fmt.Errorf("failed to instantiate slashing precompile: %w", err))
 	}
 
+	// Account Abstraction precompile
+	accountAbstractionPrecompile := aaprecompile.NewPrecompile()
+
 	// Stateless precompiles
 	precompiles[bech32Precompile.Address()] = bech32Precompile
 	precompiles[p256Precompile.Address()] = p256Precompile
+	precompiles[accountAbstractionPrecompile.Address()] = accountAbstractionPrecompile
 
 	// Stateful precompiles
 	precompiles[stakingPrecompile.Address()] = stakingPrecompile
