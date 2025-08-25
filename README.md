@@ -50,10 +50,6 @@ unhappy lunar seat`
 4. Under Default RPC URL, add the RPC URL as http://localhost:8545. Ensure your chain is running.
 5. Once added, copy the rest of the settings shown in the below images.
 
-![Button to select network](guide/networks.png "Networks Select")
-![Button to add network](guide/add_network.png "Networks Add")
-![RPC URL Settings](guide/rpc_url.png "RPC URL")
-![Overview of required settings](guide/settings.png "Settings Overview")
 
 ## Available Cosmos SDK Modules
 
