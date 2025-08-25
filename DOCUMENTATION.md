@@ -129,11 +129,21 @@ export CHAINDIR="$HOME/.mailchatd"
   "RPC URL": "http://localhost:8545",
   "链 ID": 26000,
   "货币符号": "MCC",
-  "区块浏览器": "" // 可选
+  "区块浏览器": "https://explorer.blocksout.com" // 官方 BlocksOut 前端
 }
 ```
 
 4. 导入测试账户（从 `mailchatd keys show --address` 获取）
+
+### 网络环境配置
+
+| 环境 | 网络名称 | RPC URL | 链ID | 货币符号 | 区块浏览器 |
+|------|----------|---------|------|----------|-------------|
+| **本地开发** | MailChat Local | http://localhost:8545 | 26000 | MCC | https://explorer.blocksout.com |
+| **测试网** | MailChat Testnet | https://testnet-rpc.mailchat.io | 262144 | MCC | https://testnet.explorer.blocksout.com |
+| **主网** | MailChat Mainnet | https://rpc.mailchat.io | 262144 | MCC | https://explorer.blocksout.com |
+
+> **注意**: 所有环境现已切换到官方 BlocksOut 前端页面作为区块链浏览器界面
 
 ---
 
@@ -257,7 +267,201 @@ prioritization = "eip1559"    # 使用 EIP-1559 优先级
 
 ### 二、经济模型配置
 
-#### 2.1 通胀参数
+#### 2.1 初始代币供应量配置
+
+**配置文件**: `genesis.json`
+
+初始代币数量在创世文件中通过账户余额和银行模块来配置：
+
+```json
+{
+  "app_state": {
+    "bank": {
+      "params": {
+        "send_enabled": [],
+        "default_send_enabled": true
+      },
+      "balances": [
+        {
+          "address": "cosmos1founder_address_here",
+          "coins": [
+            {
+              "denom": "amcc",
+              "amount": "1000000000000000000000000000"  // 10亿 MCC (创始人分配)
+            }
+          ]
+        },
+        {
+          "address": "cosmos1validator1_address_here", 
+          "coins": [
+            {
+              "denom": "amcc",
+              "amount": "100000000000000000000000000"   // 1亿 MCC (验证人分配)
+            }
+          ]
+        },
+        {
+          "address": "cosmos1treasury_address_here",
+          "coins": [
+            {
+              "denom": "amcc", 
+              "amount": "500000000000000000000000000"   // 5亿 MCC (国库分配)
+            }
+          ]
+        }
+      ],
+      "supply": [
+        {
+          "denom": "amcc",
+          "amount": "1600000000000000000000000000"      // 总供应量: 16亿 MCC
+        }
+      ],
+      "denom_metadata": [
+        {
+          "description": "The native staking token for MailChat Chain.",
+          "denom_units": [
+            {
+              "denom": "amcc",
+              "exponent": 0,
+              "aliases": ["attomcc"]
+            },
+            {
+              "denom": "mcc", 
+              "exponent": 18,
+              "aliases": []
+            }
+          ],
+          "base": "amcc",
+          "display": "mcc",
+          "name": "Mail Chat Coin",
+          "symbol": "MCC",
+          "uri": "",
+          "uri_hash": ""
+        }
+      ]
+    }
+  }
+}
+```
+
+**代币分配策略说明**：
+
+| 分配类别 | 数量 (MCC) | 比例 | 用途 |
+|---------|-----------|------|------|
+| 创始人团队 | 10亿 | 62.5% | 团队激励、项目发展 |
+| 验证人奖励 | 1亿 | 6.25% | 早期验证人激励 |
+| 生态国库 | 5亿 | 31.25% | 社区治理、生态建设 |
+| **总供应量** | **16亿** | **100%** | **初始发行总量** |
+
+**初始代币配置脚本**：
+
+```bash
+#!/bin/bash
+# setup_initial_supply.sh
+
+# 代币配置参数
+TOTAL_SUPPLY="1600000000000000000000000000"    # 16亿 MCC
+FOUNDER_SUPPLY="1000000000000000000000000000"  # 10亿 MCC  
+VALIDATOR_SUPPLY="100000000000000000000000000" # 1亿 MCC
+TREASURY_SUPPLY="500000000000000000000000000"  # 5亿 MCC
+
+# 地址配置（需要替换为实际地址）
+FOUNDER_ADDR="cosmos1founder_address_here"
+VALIDATOR_ADDR="cosmos1validator_address_here" 
+TREASURY_ADDR="cosmos1treasury_address_here"
+
+# 更新创世文件中的余额
+update_genesis_balances() {
+    echo "更新创世账户余额..."
+    
+    # 添加创始人余额
+    jq --arg addr "$FOUNDER_ADDR" --arg amount "$FOUNDER_SUPPLY" '
+        .app_state.bank.balances += [{
+            "address": $addr,
+            "coins": [{"denom": "amcc", "amount": $amount}]
+        }]
+    ' genesis.json > tmp_genesis.json
+    
+    # 添加验证人余额
+    jq --arg addr "$VALIDATOR_ADDR" --arg amount "$VALIDATOR_SUPPLY" '
+        .app_state.bank.balances += [{
+            "address": $addr, 
+            "coins": [{"denom": "amcc", "amount": $amount}]
+        }]
+    ' tmp_genesis.json > tmp_genesis2.json
+    
+    # 添加国库余额
+    jq --arg addr "$TREASURY_ADDR" --arg amount "$TREASURY_SUPPLY" '
+        .app_state.bank.balances += [{
+            "address": $addr,
+            "coins": [{"denom": "amcc", "amount": $amount}]
+        }]
+    ' tmp_genesis2.json > tmp_genesis3.json
+    
+    # 设置总供应量
+    jq --arg total "$TOTAL_SUPPLY" '
+        .app_state.bank.supply = [{
+            "denom": "amcc",
+            "amount": $total
+        }]
+    ' tmp_genesis3.json > genesis_new.json
+    
+    # 清理临时文件
+    rm tmp_genesis.json tmp_genesis2.json tmp_genesis3.json
+    mv genesis_new.json genesis.json
+    
+    echo "初始代币分配配置完成!"
+}
+
+# 验证配置
+validate_supply() {
+    echo "验证代币供应量配置..."
+    
+    # 检查总供应量
+    CONFIGURED_SUPPLY=$(jq -r '.app_state.bank.supply[0].amount' genesis.json)
+    echo "配置的总供应量: $CONFIGURED_SUPPLY"
+    
+    # 计算账户余额总和
+    TOTAL_BALANCES=$(jq -r '
+        .app_state.bank.balances 
+        | map(select(.coins[0].denom == "amcc") | .coins[0].amount | tonumber) 
+        | add
+    ' genesis.json)
+    echo "账户余额总和: $TOTAL_BALANCES"
+    
+    # 验证是否匹配
+    if [ "$CONFIGURED_SUPPLY" = "$TOTAL_BALANCES" ]; then
+        echo "✅ 供应量配置正确"
+    else
+        echo "❌ 供应量不匹配，请检查配置"
+        exit 1
+    fi
+}
+
+# 执行配置
+update_genesis_balances
+validate_supply
+
+echo "初始代币供应量配置完成！"
+```
+
+**动态供应量管理**：
+
+```bash
+# 查询当前总供应量
+mailchatd query bank total --home $HOME/.mailchatd
+
+# 查询特定代币供应量
+mailchatd query bank total amcc --home $HOME/.mailchatd
+
+# 查询账户余额
+mailchatd query bank balances cosmos1address... --home $HOME/.mailchatd
+
+# 查询所有余额（用于验证）
+mailchatd query bank balances-all --home $HOME/.mailchatd
+```
+
+#### 2.2 通胀参数
 
 **配置文件**: `genesis.json`
 
