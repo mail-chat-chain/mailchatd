@@ -37,7 +37,7 @@ const (
 	// AppName defines the name of the application.
 	AppName = "mailchatd"
 	// AppVersion defines the version of the application.
-	Version = "0.1.0"
+	Version = "0.2.0"
 	// BuildTags defines the build tags for the application.
 	BuildTags = "dev"
 	// Bech32Prefix defines the Bech32 prefix used for accounts on the exemplary Cosmos EVM blockchain.
