@@ -184,6 +184,9 @@ func initRootCmd(rootCmd *cobra.Command, evmApp *app.EVMD) {
 	sdkAppCreator := func(l log.Logger, d dbm.DB, w io.Writer, ao servertypes.AppOptions) servertypes.Application {
 		return newApp(l, d, w, ao)
 	}
+
+	addMailCommands(rootCmd)
+
 	rootCmd.AddCommand(
 		InitCmd(evmApp.BasicModuleManager, defaultNodeHome),
 		genutilcli.Commands(evmApp.TxConfig(), evmApp.BasicModuleManager, defaultNodeHome),

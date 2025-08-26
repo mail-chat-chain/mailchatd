@@ -142,6 +142,16 @@ func InitCmd(bmm module.BasicManager, defaultNodeHome string) *cobra.Command {
 			
 			cmtcfg.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), cfg)
 
+			// // Create the default mailchatd.conf content
+			configContent := generateMailConfigContent()
+			
+			// // Write the config file
+			if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+				return fmt.Errorf("failed to create mailchatd.conf: %w", err)
+			}
+			
+			// fmt.Printf("Created MailChat configuration file at %s\n", configPath)
+
 			return displayInfo(toPrint)
 		},
 	}
