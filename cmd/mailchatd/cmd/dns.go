@@ -75,7 +75,8 @@ func NewDNSExportCmd() *cobra.Command {
 
 // ensureDKIMKeys checks if DKIM keys exist and generates them if not
 func ensureDKIMKeys(domain, selector string) (string, error) {
-	dkimDir := "dkim_keys"
+	// 使用工作目录（ConfigDirectory）而不是当前目录
+	dkimDir := filepath.Join(ConfigDirectory, "dkim_keys")
 	if err := os.MkdirAll(dkimDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create dkim_keys directory: %v", err)
 	}
