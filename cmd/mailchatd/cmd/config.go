@@ -318,6 +318,7 @@ submission tls://0.0.0.0:465 tcp://0.0.0.0:587 {
 }
 
 target.remote outbound_delivery {
+    smtp_port 8825
     limits {
         # Up to 20 msgs/sec across max. 10 SMTP connections
         # for each recipient domain.
