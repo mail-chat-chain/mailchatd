@@ -38,7 +38,7 @@ MailChat Chain 是一个基于 Cosmos SDK v0.53.4 和 Ethereum Virtual Machine (
 区块链参数:
   共识机制: Tendermint BFT
   出块时间: 1-5秒（可配置）
-  链ID: cosmos_262144-1
+  链ID: mailchatd_26000 (生产网络)
   EVM链ID: 26000
   
 代币经济:
@@ -95,7 +95,7 @@ make build
 
 ```bash
 # 设置环境变量
-export CHAINID="cosmos_262144-1"
+export CHAINID="mailchatd_26000"
 export MONIKER="my-node"
 export CHAINDIR="$HOME/.mailchatd"
 
@@ -142,11 +142,36 @@ export CHAINDIR="$HOME/.mailchatd"
 
 | 环境 | 网络名称 | RPC URL | 链ID | 货币符号 | 区块浏览器 |
 |------|----------|---------|------|----------|-------------|
-| **本地开发** | MailChat Local | http://localhost:8545 | 26000 | MCC | https://explorer.blocksout.com |
+| **本地开发** | MailChat Local | http://localhost:8545 | 26000 | MCC | http://localhost:8080 |
+| **生产网络** | MailChat Chain | http://129.226.150.87:8545 | 26000 | MCC | http://129.226.150.87:8080 |
 | **测试网** | MailChat Testnet | https://testnet-rpc.mailchat.io | 262144 | MCC | https://testnet.explorer.blocksout.com |
 | **主网** | MailChat Mainnet | https://rpc.mailchat.io | 262144 | MCC | https://explorer.blocksout.com |
 
-> **注意**: 所有环境现已切换到官方 BlocksOut 前端页面作为区块链浏览器界面
+### 生产网络详情
+
+**MailChat Chain 生产网络** (mailchatd_26000) 由3个验证人节点组成：
+
+| 服务器 | 主机名 | 公网IP | 验证人地址 | 投票权 |
+|--------|--------|--------|-----------|--------|
+| tx-htx-1 | VM-16-13-debian | 129.226.150.87 | F8A114035A833756CE0CE92193DED4380BD545CA | 1000 |
+| tx-htx-2 | VM-16-4-debian | 43.134.188.44 | 370C1E79C75C7CCC6770EFCAD4E3AFA28A7A4E4B | 1000 |
+| tx-htx-3 | VM-0-10-debian | 43.156.5.216 | 0004921274C361C06436F14EE788B7DC62D6D8C4 | 1000 |
+
+**网络参数:**
+- **链ID**: `mailchatd_26000`
+- **EVM链ID**: `26000`
+- **共识**: Tendermint BFT (3/3 验证人)
+- **RPC端点**: `http://129.226.150.87:8545` (主节点)
+- **区块浏览器**: `http://129.226.150.87:8080`
+
+**服务分布:**
+- **tx-htx-1**: 主服务节点 + 验证人 (RPC, 区块浏览器, SMTP/IMAP)
+- **tx-htx-2**: 验证人节点
+- **tx-htx-3**: 验证人节点
+
+详细部署信息请参考 [DEPLOYMENT.md](DEPLOYMENT.md)。
+
+> **注意**: 生产网络使用实际的腾讯云服务器，主网和测试网使用官方 BlocksOut 前端页面作为区块链浏览器界面
 
 ---
 

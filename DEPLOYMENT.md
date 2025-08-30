@@ -1,781 +1,963 @@
-# MailChat 部署流程文档
+# MailChat Chain 部署指南
 
-本文档详细描述了不使用 `local_node.sh` 脚本的手动部署流程，适用于生产环境或需要自定义配置的场景。
+## 📋 目录
 
-## 前置要求
+1. [生产网络架构](#生产网络架构)
+2. [快速部署](#快速部署)
+3. [节点配置](#节点配置)
+4. [验证人部署](#验证人部署)
+5. [服务管理](#服务管理)
+6. [监控与维护](#监控与维护)
+7. [故障恢复](#故障恢复)
+8. [安全最佳实践](#安全最佳实践)
 
-- Go 1.21+ 已安装
-- `jq` 命令行工具已安装
-- 足够的磁盘空间和内存
-- 网络连接稳定
+---
 
-## 1. 编译二进制文件
+## 生产网络架构
 
-### 开发环境编译
-```bash
-# 编译到构建目录
-make build
+### 当前网络状态
 
-# 安装到系统 PATH
-make install
+MailChat Chain 当前运行在3节点验证人网络上：
 
-# Linux 交叉编译（如需要）
-make build-linux
+| 服务器 | 主机名 | 公网IP | 验证人地址 | 角色 | 主要服务 |
+|--------|--------|--------|------------|------|----------|
+| **tx-htx-1** | VM-16-13-debian | 129.226.150.87 | F8A114035A833756CE0CE92193DED4380BD545CA | 主验证人 + 服务节点 | 区块链、邮件、Nginx、RPC/API |
+| **tx-htx-2** | VM-16-4-debian | 43.134.188.44 | 370C1E79C75C7CCC6770EFCAD4E3AFA28A7A4E4B | 验证人节点 | 区块链、邮件、RPC/API |
+| **tx-htx-3** | VM-0-10-debian | 43.156.5.216 | 0004921274C361C06436F14EE788B7DC62D6D8C4 | 验证人节点 | 区块链、Web服务 |
+
+### 网络参数
+
+```yaml
+网络配置:
+  Chain ID: mailchatd_26000
+  Network ID: 26000
+  EVM Chain ID: 26000
+  共识: Tendermint BFT
+  验证人数量: 3
+  投票权分配: 平均 (每个1000)
+  出块时间: 3-5秒
+  当前区块高度: ~96,700+
+  
+代币经济:
+  原生代币: MCC (Mail Chat Coin)
+  基础单位: amcc
+  精度: 18位小数 (1 MCC = 10^18 amcc)
+  总供应量: 可配置
 ```
 
-### 调试版本编译
-```bash
-# 编译调试版本（禁用优化，保留调试信息）
-make install COSMOS_BUILD_OPTIONS=nooptimization,nostrip
+### P2P网络拓扑
+
+```mermaid
+graph TB
+    subgraph "生产网络"
+        TX1[tx-htx-1<br/>129.226.150.87:26656<br/>验证人1]
+        TX2[tx-htx-2<br/>43.134.188.44:26656<br/>验证人2]
+        TX3[tx-htx-3<br/>43.156.5.216:26656<br/>验证人3]
+        
+        TX1 <--> TX2
+        TX2 <--> TX3
+        TX3 <--> TX1
+    end
+    
+    subgraph "服务分布"
+        S1[RPC/API + 邮件 + 下载服务]
+        S2[RPC/API + 邮件服务]
+        S3[HTTPS + 部分服务]
+    end
+    
+    TX1 --> S1
+    TX2 --> S2
+    TX3 --> S3
 ```
 
-## 2. 环境变量配置
+### 服务端口映射
+
+| 服务器 | 26656 (P2P) | 26657 (RPC) | 8545 (EVM) | 8825 (SMTP) | 993 (IMAP) | 587 (Submit) | 80/443 |
+|--------|-------------|-------------|------------|-------------|------------|--------------|--------|
+| tx-htx-1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| tx-htx-2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| tx-htx-3 | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
+
+---
+
+## 快速部署
+
+### 一键部署脚本
+
+使用自动化脚本快速部署新节点：
 
 ```bash
-# 基本配置
-export CHAINID="26000"                    # 链 ID，可自定义
-export MONIKER="mailchat-node"            # 节点名称
-export CHAINDIR="$HOME/.mailchatd"       # 节点数据目录
-export KEYRING="test"                     # 密钥环类型，生产环境建议使用 "file"
-export KEYALGO="eth_secp256k1"           # 密钥算法
+# 下载并执行部署脚本
+curl -sSL https://raw.githubusercontent.com/mail-chat-chain/mailchatd/main/start.sh | bash
 
-# 路径配置
-export CONFIG_TOML="$CHAINDIR/config/config.toml"
-export APP_TOML="$CHAINDIR/config/app.toml"
-export GENESIS="$CHAINDIR/config/genesis.json"
-export TMP_GENESIS="$CHAINDIR/config/tmp_genesis.json"
+# 或者下载后执行
+wget https://raw.githubusercontent.com/mail-chat-chain/mailchatd/main/start.sh
+chmod +x start.sh
+./start.sh
 ```
 
-## 3. 节点初始化
+脚本将自动：
+1. 检测系统架构并下载正确的二进制文件
+2. 初始化节点配置
+3. 配置DNS和TLS证书（支持15种DNS提供商）
+4. 设置P2P网络连接
+5. 创建并启动systemd服务
+
+### 手动部署步骤
+
+#### 1. 系统准备
 
 ```bash
+# 更新系统
+sudo apt update && sudo apt upgrade -y
+
+# 安装依赖
+sudo apt install -y build-essential git curl jq wget
+
+# 创建工作目录
+export NODE_HOME="${NODE_HOME:-$HOME/.mailchatd}"
+mkdir -p $NODE_HOME
+cd $NODE_HOME
+```
+
+#### 2. 下载二进制文件
+
+```bash
+# 自动检测系统架构
+get_system_arch() {
+    local os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    local arch=$(uname -m)
+    
+    case "$arch" in
+        x86_64|amd64) arch="amd64" ;;
+        aarch64|arm64) arch="arm64" ;;
+        *) arch="amd64" ;;
+    esac
+    
+    echo "${os}-${arch}"
+}
+
+SYSTEM_ARCH=$(get_system_arch)
+VERSION="v0.1.0"
+
+# 下载对应版本
+wget https://github.com/mail-chat-chain/mailchatd/releases/download/${VERSION}/mailchatd_${SYSTEM_ARCH}.tar.gz
+tar -xzf mailchatd_${SYSTEM_ARCH}.tar.gz
+sudo mv mailchatd /usr/local/bin/
+sudo chmod +x /usr/local/bin/mailchatd
+```
+
+#### 3. 初始化节点
+
+```bash
+# 设置基本参数
+MONIKER="my-mailchat-node"
+CHAIN_ID="mailchatd_26000"
+
 # 初始化节点
-mailchatd init "$MONIKER" --chain-id "$CHAINID" --home "$CHAINDIR"
+mailchatd init $MONIKER --chain-id $CHAIN_ID --home $NODE_HOME
 
-# 配置客户端默认设置
-mailchatd config set client chain-id "$CHAINID" --home "$CHAINDIR"
-mailchatd config set client keyring-backend "$KEYRING" --home "$CHAINDIR"
+# 下载创世文件
+curl -o $NODE_HOME/config/genesis.json https://raw.githubusercontent.com/mail-chat-chain/mainnet/main/genesis.json
+
+# 验证创世文件
+mailchatd genesis validate-genesis --home $NODE_HOME
 ```
 
-## 4. 密钥管理
+---
 
-### 创建新账户
-```bash
-# 验证者账户
-mailchatd keys add validator --keyring-backend "$KEYRING" --algo "$KEYALGO" --home "$CHAINDIR"
+## 节点配置
 
-# 用户账户
-mailchatd keys add user1 --keyring-backend "$KEYRING" --algo "$KEYALGO" --home "$CHAINDIR"
-mailchatd keys add user2 --keyring-backend "$KEYRING" --algo "$KEYALGO" --home "$CHAINDIR"
-```
+### P2P网络配置
 
-### 查看账户信息
-```bash
-# 列出所有账户
-mailchatd keys list --home "$CHAINDIR"
-
-# 查看特定账户
-mailchatd keys show validator --home "$CHAINDIR"
-mailchatd keys show validator --address --home "$CHAINDIR"
-```
-
-## 5. 创世文件配置
-
-创世文件 `genesis.json` 是区块链网络的初始状态配置，包含了链的基本参数、初始账户余额、治理参数等。以下是手动修改各个参数的详细说明。
-
-### 5.1 基础代币配置
-
-#### Staking 模块配置
-```bash
-# 手动修改方式：
-# 1. 使用文本编辑器打开 $CHAINDIR/config/genesis.json
-# 2. 找到 app_state.staking.params.bond_denom 字段
-# 3. 将值改为 "amcc"
-
-# 命令行修改方式：
-jq '.app_state["staking"]["params"]["bond_denom"]="amcc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-```
-
-**参数意义**：
-- `bond_denom`: 质押代币的基本单位
-- 作用：验证者需要使用此代币进行质押来参与网络共识
-- 影响：所有与质押相关的操作（委托、取消委托、奖励分发）都使用此代币
-
-#### 治理模块配置
-```bash
-# 治理提案最小押金代币
-jq '.app_state["gov"]["deposit_params"]["min_deposit"][0]["denom"]="amcc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-
-# 治理参数中的最小押金（新版本）
-jq '.app_state["gov"]["params"]["min_deposit"][0]["denom"]="amcc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-
-# 加急提案最小押金
-jq '.app_state["gov"]["params"]["expedited_min_deposit"][0]["denom"]="amcc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-```
-
-**参数意义**：
-- `min_deposit`: 提交提案需要的最小押金数量和代币类型
-- `expedited_min_deposit`: 加急提案需要的押金（通常更高）
-- 作用：防止垃圾提案，确保提案者有经济激励认真考虑提案
-- 影响：提案者必须押金足够数量的指定代币才能提交提案
-
-#### EVM 模块配置
-```bash
-# EVM 交易使用的代币
-jq '.app_state["evm"]["params"]["evm_denom"]="amcc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-```
-
-**参数意义**：
-- `evm_denom`: EVM 环境中用于支付 gas 费用的代币
-- 作用：确定以太坊虚拟机交易的手续费代币类型
-- 影响：所有智能合约调用和 EVM 交易都使用此代币支付 gas
-
-#### 铸币模块配置
-```bash
-# 通胀奖励使用的代币
-jq '.app_state["mint"]["params"]["mint_denom"]="amcc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-```
-
-**参数意义**：
-- `mint_denom`: 网络通胀时铸造的代币类型
-- 作用：定义区块奖励和通胀奖励的代币类型
-- 影响：验证者和委托者获得的通胀奖励将是此类型的代币
-
-### 5.2 代币元数据配置
-```bash
-# 手动编辑示例：
-# 在 genesis.json 中找到 app_state.bank.denom_metadata 数组，添加或修改：
-{
-  "description": "The native staking token for mailchatd.",
-  "denom_units": [
-    {"denom": "amcc", "exponent": 0, "aliases": ["attomcc"]},
-    {"denom": "mcc", "exponent": 18, "aliases": []}
-  ],
-  "base": "amcc",
-  "display": "mcc", 
-  "name": "Mail Chat Coin",
-  "symbol": "MCC",
-  "uri": "",
-  "uri_hash": ""
-}
-
-# 命令行方式：
-jq '.app_state["bank"]["denom_metadata"]=[{
-  "description":"The native staking token for mailchatd.",
-  "denom_units":[
-    {"denom":"amcc","exponent":0,"aliases":["attomcc"]},
-    {"denom":"mcc","exponent":18,"aliases":[]}
-  ],
-  "base":"amcc",
-  "display":"mcc",
-  "name":"Mail Chat Coin",
-  "symbol":"MCC",
-  "uri":"",
-  "uri_hash":""
-}]' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-```
-
-**参数意义**：
-- `base`: 最小单位代币名称（1 amcc = 10^-18 mcc）
-- `display`: 用户界面显示的代币单位
-- `exponent`: 单位转换的指数（18 表示 10^18 的转换比例）
-- `name/symbol`: 代币的全名和简称
-- 作用：定义代币的显示格式和单位转换关系
-- 影响：钱包和用户界面如何显示代币数量和单位
-
-### 代币元数据配置
-```bash
-jq '.app_state["bank"]["denom_metadata"]=[{
-  "description":"The native staking token for mailchatd.",
-  "denom_units":[
-    {"denom":"amcc","exponent":0,"aliases":["attomcc"]},
-    {"denom":"mcc","exponent":18,"aliases":[]}
-  ],
-  "base":"amcc",
-  "display":"mcc",
-  "name":"Mail Chat Coin",
-  "symbol":"MCC",
-  "uri":"",
-  "uri_hash":""
-}]' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-```
-
-### 5.3 EVM 预编译合约配置
-```bash
-# 手动编辑方式：
-# 在 genesis.json 中找到 app_state.evm.params.active_static_precompiles 数组
-# 添加以下地址：
-
-# 命令行方式：
-jq '.app_state["evm"]["params"]["active_static_precompiles"]=[
-  "0x0000000000000000000000000000000000000100",
-  "0x0000000000000000000000000000000000000400",
-  "0x0000000000000000000000000000000000000800",
-  "0x0000000000000000000000000000000000000801",
-  "0x0000000000000000000000000000000000000802",
-  "0x0000000000000000000000000000000000000803",
-  "0x0000000000000000000000000000000000000804",
-  "0x0000000000000000000000000000000000000805",
-  "0x0000000000000000000000000000000000000806",
-  "0x0000000000000000000000000000000000000807"
-]' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-```
-
-**预编译合约地址说明**：
-- `0x100`: Bech32 地址转换预编译（Cosmos ↔ Ethereum 地址格式转换）
-- `0x400`: Bank 模块预编译（代币转账、余额查询等）
-- `0x800`: Staking 模块预编译（质押、委托操作）
-- `0x801`: Distribution 模块预编译（奖励分发、提取操作）
-- `0x802`: Gov 模块预编译（治理提案、投票）
-- `0x803`: ICS20 预编译（跨链转账）
-- `0x804`: Werc20 预编译（ERC20 代币包装）
-- `0x805`: ERC20 模块预编译（代币对管理）
-- `0x806`: P256 验证预编译（椭圆曲线签名验证）
-- `0x807`: Slashing 模块预编译（惩罚机制）
-
-**参数意义**：
-- 作用：定义在 EVM 环境中可用的系统级预编译合约
-- 影响：智能合约可以通过这些地址调用 Cosmos SDK 模块功能
-- 重要性：实现 EVM 和 Cosmos 生态的桥接，让以太坊 DApp 能访问 Cosmos 功能
-
-### 5.4 ERC20 代币对配置
-```bash
-# 手动编辑方式：
-# 在 genesis.json 中：
-# 1. 找到 app_state.erc20.native_precompiles 数组
-# 2. 找到 app_state.erc20.token_pairs 数组
-
-# 启用原生代币预编译
-jq '.app_state.erc20.native_precompiles=["0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"]' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-
-# 配置代币对
-jq '.app_state.erc20.token_pairs=[{
-  contract_owner:1,
-  erc20_address:"0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-  denom:"amcc",
-  enabled:true
-}]' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-```
-
-**参数意义**：
-- `native_precompiles`: 原生代币在 EVM 中的预编译地址
-- `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`: 以太坊社区约定的原生代币地址
-- `token_pairs`: 定义 Cosmos 代币与 ERC20 代币的映射关系
-- `contract_owner`: 代币合约的所有者类型（1=模块拥有，0=外部拥有）
-- 作用：让原生 Cosmos 代币可以在 EVM 环境中作为 ERC20 代币使用
-- 影响：用户可以在以太坊钱包中看到和使用 Cosmos 代币
-
-### 5.5 区块和共识参数配置
-```bash
-# 手动编辑方式：
-# 在 genesis.json 中找到 consensus.params.block.max_gas 字段
-
-# 设置区块最大 gas 限制
-jq '.consensus.params.block.max_gas="10000000"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-```
-
-**参数意义**：
-- `max_gas`: 单个区块能包含的最大 gas 数量
-- 作用：限制区块大小，防止区块过大影响网络性能
-- 影响：决定了网络的交易吞吐量上限
-- 建议值：
-  - 开发环境: 10,000,000 (10M)
-  - 测试网: 20,000,000 (20M)  
-  - 主网: 根据网络性能和需求调整
-
-## 6. 网络配置优化
-
-网络配置文件位于 `$CHAINDIR/config/config.toml` 和 `$CHAINDIR/config/app.toml`。以下是各个参数的详细说明和手动修改方法。
-
-### 6.1 共识时序参数配置
-
-**配置文件位置**: `$CHAINDIR/config/config.toml`
-
-#### 手动编辑方式
-使用文本编辑器打开 `config.toml`，找到 `[consensus]` 部分，修改以下参数：
+编辑 `$NODE_HOME/config/config.toml`:
 
 ```toml
-[consensus]
-# 提案阶段超时时间
-timeout_propose = "2s"          # 默认: "3s"
-timeout_propose_delta = "200ms" # 默认: "500ms"
+[p2p]
+# 监听地址
+laddr = "tcp://0.0.0.0:26656"
 
-# 预投票阶段超时时间
-timeout_prevote = "500ms"       # 默认: "1s"
-timeout_prevote_delta = "200ms" # 默认: "500ms"
+# 生产网络持久节点
+persistent_peers = "38be473f1fb461d9f81f3dba564781ba6df12e58@43.134.188.44:26656,ad8e45a902805281d53e9276f0957fe337b7fcf2@43.156.5.216:26656,09b2c9d79242df93936ddbc735531c9a9c284239@129.226.150.87:26656"
 
-# 预提交阶段超时时间
-timeout_precommit = "500ms"     # 默认: "1s"
-timeout_precommit_delta = "200ms" # 默认: "500ms"
+# 种子节点（可选）
+seeds = ""
 
-# 提交阶段超时时间
-timeout_commit = "1s"           # 默认: "5s"
+# 最大连接数
+max_num_inbound_peers = 40
+max_num_outbound_peers = 10
 
-# 广播交易超时时间
-timeout_broadcast_tx_commit = "5s" # 默认: "10s"
+# 连接超时设置
+handshake_timeout = "20s"
+dial_timeout = "3s"
+
+# PEX设置
+pex = true
+addr_book_strict = true
+flush_throttle_timeout = "100ms"
+
+# 私有节点ID（验证人使用）
+# private_peer_ids = ""
 ```
 
-#### 命令行批量修改方式
-```bash
-# macOS 使用
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' 's/timeout_propose = "3s"/timeout_propose = "2s"/g' "$CONFIG_TOML"
-    sed -i '' 's/timeout_propose_delta = "500ms"/timeout_propose_delta = "200ms"/g' "$CONFIG_TOML"
-    sed -i '' 's/timeout_prevote = "1s"/timeout_prevote = "500ms"/g' "$CONFIG_TOML"
-    sed -i '' 's/timeout_prevote_delta = "500ms"/timeout_prevote_delta = "200ms"/g' "$CONFIG_TOML"
-    sed -i '' 's/timeout_precommit = "1s"/timeout_precommit = "500ms"/g' "$CONFIG_TOML"
-    sed -i '' 's/timeout_precommit_delta = "500ms"/timeout_precommit_delta = "200ms"/g' "$CONFIG_TOML"
-    sed -i '' 's/timeout_commit = "5s"/timeout_commit = "1s"/g' "$CONFIG_TOML"
-    sed -i '' 's/timeout_broadcast_tx_commit = "10s"/timeout_broadcast_tx_commit = "5s"/g' "$CONFIG_TOML"
-else
-    # Linux 使用
-    sed -i 's/timeout_propose = "3s"/timeout_propose = "2s"/g' "$CONFIG_TOML"
-    sed -i 's/timeout_propose_delta = "500ms"/timeout_propose_delta = "200ms"/g' "$CONFIG_TOML"
-    sed -i 's/timeout_prevote = "1s"/timeout_prevote = "500ms"/g' "$CONFIG_TOML"
-    sed -i 's/timeout_prevote_delta = "500ms"/timeout_prevote_delta = "200ms"/g' "$CONFIG_TOML"
-    sed -i 's/timeout_precommit = "1s"/timeout_precommit = "500ms"/g' "$CONFIG_TOML"
-    sed -i 's/timeout_precommit_delta = "500ms"/timeout_precommit_delta = "200ms"/g' "$CONFIG_TOML"
-    sed -i 's/timeout_commit = "5s"/timeout_commit = "1s"/g' "$CONFIG_TOML"
-    sed -i 's/timeout_broadcast_tx_commit = "10s"/timeout_broadcast_tx_commit = "5s"/g' "$CONFIG_TOML"
-fi
-```
+### RPC和API配置
 
-**参数意义详解**：
-
-1. **timeout_propose**: 验证者提出新区块的超时时间
-   - 作用：给验证者足够时间收集交易并构建区块
-   - 开发环境：较短时间加快测试速度
-   - 生产环境：考虑网络延迟和负载
-
-2. **timeout_propose_delta**: 每轮提案超时时间的增量
-   - 作用：在网络拥堵时逐渐增加超时时间
-   - 防止网络问题导致的无限重试
-
-3. **timeout_prevote/timeout_precommit**: 投票阶段的超时时间
-   - 作用：给验证者足够时间广播和接收投票
-   - 影响：过短可能导致投票丢失，过长会降低出块速度
-
-4. **timeout_commit**: 等待提交的时间
-   - 作用：确保所有验证者都能收到最终提交
-   - 开发环境：1s 快速测试
-   - 生产环境：3-5s 保证网络稳定性
-
-**环境建议值**：
-- **开发环境**: 快速出块，适合测试
-- **测试网**: 中等速度，模拟真实网络条件
-- **主网**: 保守设置，确保网络稳定性
-
-### 6.2 监控和 API 配置
-
-#### Prometheus 监控配置
-
-**配置文件位置**: `$CHAINDIR/config/config.toml`
-
-**手动编辑方式**：
-找到 `[instrumentation]` 部分，修改以下参数：
+编辑 `$NODE_HOME/config/config.toml`:
 
 ```toml
-[instrumentation]
-# 启用 Prometheus 监控端点
-prometheus = true                    # 默认: false
-prometheus_listen_addr = ":26660"    # 监控端点地址
-max_open_connections = 3             # 最大连接数
-namespace = "cometbft"               # 指标命名空间
+[rpc]
+# RPC监听地址
+# 生产环境建议: "tcp://127.0.0.1:26657"
+# 开发环境: "tcp://0.0.0.0:26657"
+laddr = "tcp://0.0.0.0:26657"
+
+# CORS配置
+cors_allowed_origins = ["*"]
+cors_allowed_methods = ["HEAD", "GET", "POST"]
+cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"]
+
+# 连接限制
+max_open_connections = 900
+max_subscription_clients = 100
+max_subscriptions_per_client = 5
+timeout_broadcast_tx_commit = "10s"
+
+# WebSocket配置
+experimental_subscription_buffer_size = 200
+experimental_websocket_write_buffer_size = 200
+experimental_close_on_slow_client = false
 ```
 
-#### API 服务配置
+### EVM和JSON-RPC配置
 
-**配置文件位置**: `$CHAINDIR/config/app.toml`
-
-**手动编辑方式**：
-找到各个 API 部分，修改以下参数：
+编辑 `$NODE_HOME/config/app.toml`:
 
 ```toml
-# gRPC 服务配置
-[grpc]
-enable = true                        # 默认: true
-address = "localhost:9090"           # gRPC 端点
+[evm]
+# EVM链ID
+evm-chain-id = 26000
 
-# gRPC-Web 服务配置  
-[grpc-web]
-enable = true                        # 默认: false
-address = "localhost:9091"           # gRPC-Web 端点
+# 追踪器
+tracer = ""
 
-# REST API 配置
-[api]
-enable = true                        # 默认: false
-swagger = true                       # 启用 Swagger 文档
-address = "tcp://localhost:1317"     # REST API 端点
-max-open-connections = 1000          # 最大连接数
+# Gas设置
+max-tx-gas-wanted = 0  # 0表示无限制
 
-# EVM JSON-RPC 配置
 [json-rpc]
-enable = true                        # 默认: true
-address = "0.0.0.0:8545"            # JSON-RPC 端点
-ws-address = "0.0.0.0:8546"         # WebSocket 端点
+# 启用JSON-RPC
+enable = true
+
+# 监听地址
+address = "0.0.0.0:8545"
+ws-address = "0.0.0.0:8546"
+
+# API命名空间
+api = "eth,net,web3,debug,personal,txpool"
+
+# Gas和费用限制
+gas-cap = 25000000
+txfee-cap = 1
+
+# 过滤器设置
+filter-cap = 200
+fee-history-cap = 100
+
+# 日志设置
+log-cap = 10000
+block-range-cap = 10000
+
+# 超时设置
+evm-timeout = "5s"
+http-timeout = "30s"
+http-idle-timeout = "120s"
+
+# 批处理设置
+enable-indexer = true
+metrics-address = "0.0.0.0:6065"
 ```
 
-#### 命令行批量修改方式
-```bash
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS 配置
-    # 启用 Prometheus 监控
-    sed -i '' 's/prometheus = false/prometheus = true/' "$CONFIG_TOML"
-    
-    # 启用各种 API 端点（开发环境）
-    sed -i '' 's/enable = false/enable = true/g' "$APP_TOML"
-    sed -i '' 's/enabled = false/enabled = true/g' "$APP_TOML"
-    
-    # 配置 Prometheus 数据保留时间（可选）
-    sed -i '' 's/prometheus-retention-time = 0/prometheus-retention-time = 1000000000000/g' "$APP_TOML"
-else
-    # Linux 配置
-    sed -i 's/prometheus = false/prometheus = true/' "$CONFIG_TOML"
-    sed -i 's/enable = false/enable = true/g' "$APP_TOML"
-    sed -i 's/enabled = false/enabled = true/g' "$APP_TOML"
-    sed -i 's/prometheus-retention-time = "0"/prometheus-retention-time = "1000000000000"/g' "$APP_TOML"
-fi
-```
+### 邮件服务配置
 
-**参数意义详解**：
+创建 `$NODE_HOME/mailchatd.conf`:
 
-1. **Prometheus 监控**：
-   - 作用：收集节点性能指标，用于监控和告警
-   - 指标包括：区块高度、交易数量、内存使用、网络连接等
-   - 端口：默认 26660
+```yaml
+# 域名配置
+$(hostname) = your-domain.com
+$(primary_domain) = your-domain.com
+$(local_domains) = $(primary_domain)
 
-2. **API 端点说明**：
-   - **gRPC** (端口 9090)：高性能的 RPC 调用
-   - **REST API** (端口 1317)：标准 HTTP API
-   - **JSON-RPC** (端口 8545)：以太坊兼容的 RPC 接口
-   - **WebSocket** (端口 8546)：实时事件订阅
-
-3. **安全注意事项**：
-   - 生产环境应限制 API 访问 IP
-   - 考虑使用反向代理和 SSL 加密
-   - 监控 API 调用频率和资源使用
-
-### 6.3 治理参数配置
-
-**配置文件位置**: `$CHAINDIR/config/genesis.json`
-
-#### 手动编辑方式
-在 `genesis.json` 中找到 `app_state.gov.params` 部分，修改以下参数：
-
-```json
-{
-  "app_state": {
-    "gov": {
-      "params": {
-        "max_deposit_period": "30s",      // 默认: "172800s" (48小时)
-        "voting_period": "30s",          // 默认: "172800s" (48小时)  
-        "expedited_voting_period": "15s", // 默认: "86400s" (24小时)
-        "min_deposit": [
-          {"denom": "amcc", "amount": "10000000"}
-        ],
-        "expedited_min_deposit": [
-          {"denom": "amcc", "amount": "50000000"}
-        ]
-      }
+# TLS证书配置（支持15种DNS提供商）
+tls {
+    loader acme {
+        hostname $(hostname)
+        email postmaster@$(hostname)
+        agreed
+        challenge dns-01
+        dns cloudflare {
+            api_token YOUR_CLOUDFLARE_API_TOKEN
+        }
     }
-  }
+}
+
+# 区块链集成
+blockchain.ethereum mailchatd {
+    chain_id 26000
+    rpc_url http://127.0.0.1:8545
+}
+
+# 存储配置
+storage.imapsql local_mailboxes {
+    driver sqlite3
+    dsn imapsql.db
+}
+
+# 认证配置
+auth.pass_evm blockchain_auth {
+    blockchain &mailchatd
+    storage &local_mailboxes
+}
+
+# SMTP服务
+smtp tcp://0.0.0.0:8825 {
+    limits {
+        all rate 20 1s
+        all concurrency 10
+    }
+    
+    dmarc yes
+    check {
+        require_mx_record
+        dkim
+        spf
+    }
+    
+    source $(local_domains) {
+        destination postmaster $(local_domains) {
+            modify {
+                replace_rcpt &local_rewrites
+                blockchain_tx &mailchatd
+            }
+            deliver_to &local_mailboxes
+        }
+    }
+}
+
+# Submission服务
+submission tls://0.0.0.0:465 tcp://0.0.0.0:587 {
+    limits {
+        all rate 50 1s
+    }
+    
+    auth &blockchain_auth
+    
+    source $(local_domains) {
+        check {
+            authorize_sender {
+                prepare_email &local_rewrites
+                user_to_email identity
+            }
+        }
+        
+        modify {
+            blockchain_tx &mailchatd
+        }
+        
+        destination postmaster $(local_domains) {
+            deliver_to &local_routing
+        }
+        
+        default_destination {
+            modify {
+                dkim $(primary_domain) $(local_domains) default
+            }
+            deliver_to &remote_queue
+        }
+    }
+}
+
+# IMAP服务
+imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
+    auth &blockchain_auth
+    storage &local_mailboxes
 }
 ```
 
-#### 命令行修改方式
-```bash
-# 缩短提案周期用于开发测试
-sed -i.bak 's/"max_deposit_period": "172800s"/"max_deposit_period": "30s"/g' "$GENESIS"
-sed -i.bak 's/"voting_period": "172800s"/"voting_period": "30s"/g' "$GENESIS"
-sed -i.bak 's/"expedited_voting_period": "86400s"/"expedited_voting_period": "15s"/g' "$GENESIS"
-```
+---
 
-**参数意义详解**：
+## 验证人部署
 
-1. **max_deposit_period**: 提案押金收集期限
-   - 作用：提案提交后，社区成员可以继续添加押金的时间窗口
-   - 开发环境：30s 快速测试
-   - 生产环境：172800s (48小时) 给社区足够时间
+### 成为验证人的步骤
 
-2. **voting_period**: 正常提案投票期
-   - 作用：验证者和委托者对提案进行投票的时间
-   - 影响：时间过短可能导致参与度低，过长延缓治理决策
-
-3. **expedited_voting_period**: 加急提案投票期
-   - 作用：重要或紧急提案的快速投票通道
-   - 要求：通常需要更高的押金和投票阈值
-
-### 6.4 数据修剪配置
-
-**配置文件位置**: `$CHAINDIR/config/app.toml`
-
-#### 手动编辑方式
-找到 `[base]` 部分，修改以下参数：
-
-```toml
-[base]
-# 修剪策略
-pruning = "custom"              # 选项: "default", "nothing", "everything", "custom"
-pruning-keep-recent = "100"     # 保留最近的区块数量
-pruning-interval = "10"         # 修剪间隔（每N个区块执行一次修剪）
-```
-
-#### 命令行修改方式
-```bash
-# 自定义修剪设置
-sed -i.bak 's/pruning = "default"/pruning = "custom"/g' "$APP_TOML"
-sed -i.bak 's/pruning-keep-recent = "0"/pruning-keep-recent = "100"/g' "$APP_TOML"
-sed -i.bak 's/pruning-interval = "0"/pruning-interval = "10"/g' "$APP_TOML"
-```
-
-**修剪策略说明**：
-
-1. **pruning = "default"**: 
-   - 保留最近 100,000 个区块，每 500 个区块修剪一次
-   - 适合大多数节点
-
-2. **pruning = "nothing"**:
-   - 不修剪任何数据，保留完整历史
-   - 适合归档节点和区块浏览器
-
-3. **pruning = "everything"**:
-   - 只保留最近 2 个区块，每个区块都修剪
-   - 最节省存储空间，但丢失历史数据
-
-4. **pruning = "custom"**:
-   - 自定义修剪参数
-   - `pruning-keep-recent`: 保留的最近区块数量
-   - `pruning-interval`: 修剪执行间隔
-
-**存储空间影响**：
-- **不修剪**: 数据量持续增长，需要大量存储空间
-- **轻度修剪**: 保留一定历史，平衡存储和功能
-- **积极修剪**: 最小存储需求，但限制历史查询能力
-
-## 7. 账户余额分配
+#### 1. 准备账户和资金
 
 ```bash
-# 为验证者账户分配大量代币（验证者需要质押代币）
-mailchatd genesis add-genesis-account validator 100000000000000000000000000amcc --keyring-backend "$KEYRING" --home "$CHAINDIR"
+# 创建验证人账户
+mailchatd keys add validator --keyring-backend test --algo eth_secp256k1 --home $NODE_HOME
 
-# 为用户账户分配测试代币
-mailchatd genesis add-genesis-account user1 1000000000000000000000amcc --keyring-backend "$KEYRING" --home "$CHAINDIR"
-mailchatd genesis add-genesis-account user2 1000000000000000000000amcc --keyring-backend "$KEYRING" --home "$CHAINDIR"
+# 获取地址
+VALIDATOR_ADDR=$(mailchatd keys show validator -a --home $NODE_HOME)
+echo "验证人地址: $VALIDATOR_ADDR"
 
-# 可以添加更多账户...
+# 确保账户有足够的MCC (建议至少100,000 MCC)
+mailchatd query bank balances $VALIDATOR_ADDR --home $NODE_HOME
 ```
 
-## 8. 验证者设置
+#### 2. 创建验证人
 
 ```bash
-# 创建验证者创世交易
-mailchatd genesis gentx validator 1000000000000000000000amcc \
-  --gas-prices 10000000amcc \
-  --keyring-backend "$KEYRING" \
-  --chain-id "$CHAINID" \
-  --home "$CHAINDIR"
+# 获取节点公钥
+NODE_PUBKEY=$(mailchatd tendermint show-validator --home $NODE_HOME)
+echo "节点公钥: $NODE_PUBKEY"
 
-# 收集所有创世交易
-mailchatd genesis collect-gentxs --home "$CHAINDIR"
-
-# 验证创世文件的正确性
-mailchatd genesis validate-genesis --home "$CHAINDIR"
+# 创建验证人交易
+mailchatd tx staking create-validator \
+  --amount=100000000000000000000000amcc \
+  --pubkey=$NODE_PUBKEY \
+  --moniker="Your Validator Name" \
+  --identity="" \
+  --website="https://your-website.com" \
+  --security-contact="security@your-email.com" \
+  --details="Professional validator for MailChat Chain" \
+  --commission-rate="0.10" \
+  --commission-max-rate="0.20" \
+  --commission-max-change-rate="0.01" \
+  --min-self-delegation="10000000000000000000000" \
+  --gas="300000" \
+  --gas-prices="0.025amcc" \
+  --from=validator \
+  --chain-id=mailchatd_26000 \
+  --home=$NODE_HOME \
+  --yes
 ```
 
-## 9. 启动节点
+#### 3. 验证状态
 
-### 基础启动
 ```bash
-mailchatd start \
-  --log_level info \
-  --minimum-gas-prices=0.0001amcc \
-  --home "$CHAINDIR" \
-  --json-rpc.api eth,txpool,personal,net,debug,web3 \
-  --chain-id "$CHAINID"
+# 获取验证人operator地址
+VALIDATOR_OPERATOR=$(mailchatd keys show validator --bech val -a --home $NODE_HOME)
+
+# 查询验证人信息
+mailchatd query staking validator $VALIDATOR_OPERATOR --home $NODE_HOME
+
+# 检查是否在活跃集中
+curl -s http://localhost:26657/validators | jq '.result.validators[] | select(.address=="YOUR_VALIDATOR_ADDRESS")'
+
+# 检查签名状态
+mailchatd query slashing signing-info $(mailchatd tendermint show-validator --home $NODE_HOME) --home $NODE_HOME
 ```
 
-### 后台启动
+### 验证人密钥安全
+
 ```bash
-nohup mailchatd start \
-  --log_level info \
-  --minimum-gas-prices=0.0001amcc \
-  --home "$CHAINDIR" \
-  --json-rpc.api eth,txpool,personal,net,debug,web3 \
-  --chain-id "$CHAINID" > "$CHAINDIR/node.log" 2>&1 &
+# 备份关键文件（极其重要！）
+BACKUP_DIR="/secure/backup/$(date +%Y%m%d)"
+mkdir -p $BACKUP_DIR
+
+# 备份验证人密钥
+cp $NODE_HOME/config/priv_validator_key.json $BACKUP_DIR/
+cp $NODE_HOME/config/node_key.json $BACKUP_DIR/
+
+# 设置权限
+chmod 600 $BACKUP_DIR/*.json
+chmod 700 $BACKUP_DIR
+
+# 验证备份
+ls -la $BACKUP_DIR/
 ```
 
-### 使用 systemd 服务（推荐生产环境）
-创建服务文件 `/etc/systemd/system/mailchatd.service`：
-```ini
+---
+
+## 服务管理
+
+### Systemd服务配置
+
+#### 1. 创建区块链服务
+
+```bash
+sudo tee /etc/systemd/system/mailchatd.service > /dev/null <<EOF
 [Unit]
-Description=MailChat Node
-After=network.target
+Description=MailChat Chain Node
+After=network-online.target
 
 [Service]
 Type=simple
-User=mailchat
-WorkingDirectory=/home/mailchat
-ExecStart=/usr/local/bin/mailchatd start --log_level info --minimum-gas-prices=0.0001amcc --home /home/mailchat/.mailchatd --json-rpc.api eth,txpool,personal,net,debug,web3 --chain-id 26000
-Restart=on-failure
+User=$USER
+ExecStart=/usr/local/bin/mailchatd start --home $HOME/.mailchatd --log_level info
+Restart=always
 RestartSec=3
-LimitNOFILE=4096
+LimitNOFILE=65535
+Environment="HOME=$HOME"
+Environment="NODE_HOME=$HOME/.mailchatd"
 
 [Install]
 WantedBy=multi-user.target
+EOF
 ```
 
-启动服务：
+#### 2. 创建邮件服务
+
 ```bash
-sudo systemctl enable mailchatd
+sudo tee /etc/systemd/system/mailchatd-mail.service > /dev/null <<EOF
+[Unit]
+Description=MailChat Mail Server
+After=network-online.target mailchatd.service
+Requires=mailchatd.service
+
+[Service]
+Type=simple
+User=$USER
+ExecStart=/usr/local/bin/mailchatd run
+Restart=always
+RestartSec=3
+Environment="HOME=$HOME"
+WorkingDirectory=$HOME/.mailchatd
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+#### 3. 启动和管理服务
+
+```bash
+# 重载systemd配置
+sudo systemctl daemon-reload
+
+# 启动服务
 sudo systemctl start mailchatd
+sudo systemctl start mailchatd-mail
+
+# 设置开机自启
+sudo systemctl enable mailchatd
+sudo systemctl enable mailchatd-mail
+
+# 查看服务状态
 sudo systemctl status mailchatd
+sudo systemctl status mailchatd-mail
+
+# 查看日志
+sudo journalctl -u mailchatd -f
+sudo journalctl -u mailchatd-mail -f
+
+# 重启服务
+sudo systemctl restart mailchatd
+sudo systemctl restart mailchatd-mail
 ```
 
-## 10. 验证部署
+---
 
-### 检查节点状态
+## 监控与维护
+
+### 节点健康检查脚本
+
+创建 `~/check_node_health.sh`:
+
 ```bash
-# 检查节点同步状态
-mailchatd status --home "$CHAINDIR"
+#!/bin/bash
 
-# 查看账户余额
-mailchatd query bank balances $(mailchatd keys show validator -a --home "$CHAINDIR") --home "$CHAINDIR"
+# 配置
+NODE_HOME="${NODE_HOME:-$HOME/.mailchatd}"
+ALERT_EMAIL="admin@your-domain.com"
+VALIDATOR_ADDR="YOUR_VALIDATOR_ADDRESS"
 
-# 检查验证者状态
-mailchatd query staking validator $(mailchatd keys show validator --bech val -a --home "$CHAINDIR") --home "$CHAINDIR"
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo "=== MailChat Node Health Check ==="
+echo "Time: $(date)"
+echo "================================"
+
+# 1. 检查进程状态
+if pgrep -x mailchatd > /dev/null; then
+    echo -e "${GREEN}✓${NC} Node process is running"
+else
+    echo -e "${RED}✗${NC} Node process is NOT running"
+    exit 1
+fi
+
+# 2. 检查同步状态
+SYNC_STATUS=$(curl -s http://localhost:26657/status | jq -r '.result.sync_info')
+CATCHING_UP=$(echo $SYNC_STATUS | jq -r '.catching_up')
+LATEST_HEIGHT=$(echo $SYNC_STATUS | jq -r '.latest_block_height')
+
+if [ "$CATCHING_UP" = "false" ]; then
+    echo -e "${GREEN}✓${NC} Node is synchronized (Height: $LATEST_HEIGHT)"
+else
+    echo -e "${YELLOW}⚠${NC} Node is catching up (Height: $LATEST_HEIGHT)"
+fi
+
+# 3. 检查对等节点连接
+PEER_COUNT=$(curl -s http://localhost:26657/net_info | jq '.result.n_peers' | tr -d '"')
+if [ "$PEER_COUNT" -gt 0 ]; then
+    echo -e "${GREEN}✓${NC} Connected to $PEER_COUNT peers"
+else
+    echo -e "${RED}✗${NC} No peer connections"
+fi
+
+# 4. 检查验证人状态（如果是验证人）
+if [ ! -z "$VALIDATOR_ADDR" ]; then
+    VALIDATOR_INFO=$(curl -s http://localhost:26657/validators | jq '.result.validators[] | select(.address=="'$VALIDATOR_ADDR'")')
+    if [ ! -z "$VALIDATOR_INFO" ]; then
+        VOTING_POWER=$(echo $VALIDATOR_INFO | jq -r '.voting_power')
+        echo -e "${GREEN}✓${NC} Validator active (Voting Power: $VOTING_POWER)"
+    else
+        echo -e "${RED}✗${NC} Validator not in active set"
+    fi
+fi
+
+# 5. 检查磁盘空间
+DISK_USAGE=$(df -h $NODE_HOME | awk 'NR==2 {print $5}' | tr -d '%')
+if [ "$DISK_USAGE" -lt 80 ]; then
+    echo -e "${GREEN}✓${NC} Disk usage: ${DISK_USAGE}%"
+else
+    echo -e "${YELLOW}⚠${NC} Disk usage high: ${DISK_USAGE}%"
+fi
+
+# 6. 检查内存使用
+MEM_USAGE=$(free | grep Mem | awk '{print int($3/$2 * 100)}')
+echo -e "Memory usage: ${MEM_USAGE}%"
+
+echo "================================"
 ```
 
-### 测试 JSON-RPC 端点
+### Prometheus监控配置
+
+创建 `prometheus.yml`:
+
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'mailchat-node'
+    static_configs:
+      - targets: ['localhost:26660']  # Tendermint metrics
+        labels:
+          instance: 'mailchat-validator'
+          
+  - job_name: 'mailchat-evm'
+    static_configs:
+      - targets: ['localhost:6065']   # EVM metrics
+        labels:
+          instance: 'mailchat-evm'
+```
+
+### 关键监控指标
+
 ```bash
-# 测试 HTTP RPC
-curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545
+# 实时监控命令
+watch -n 5 'curl -s http://localhost:26657/status | jq ".result.sync_info"'
 
-# 测试余额查询
-curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0x...", "latest"],"id":1}' http://localhost:8545
+# 验证人签名监控
+mailchatd query slashing signing-info $(mailchatd tendermint show-validator --home $NODE_HOME) --home $NODE_HOME
+
+# 查看最近的区块
+curl -s http://localhost:26657/block | jq '.result.block.header'
+
+# 查看共识状态
+curl -s http://localhost:26657/consensus_state | jq '.result.round_state'
 ```
 
-## 生产环境安全配置
+---
 
-### 密钥安全
-```bash
-# 使用 file 类型密钥环并设置密码
-export KEYRING="file"
+## 故障恢复
 
-# 备份验证者私钥
-cp "$CHAINDIR/config/priv_validator_key.json" /secure/backup/location/
+### 常见问题处理
 
-# 设置适当的文件权限
-chmod 600 "$CHAINDIR/config/priv_validator_key.json"
-chmod 600 "$CHAINDIR/config/node_key.json"
-```
+#### 1. 节点无法同步
 
-### 网络安全
-```bash
-# 限制 RPC 访问（在 config.toml 中）
-laddr = "tcp://127.0.0.1:26657"  # 仅本地访问
-
-# 限制 JSON-RPC 访问（在 app.toml 中）
-address = "127.0.0.1:8545"       # 仅本地访问
-
-# 配置防火墙
-sudo ufw allow 26656/tcp         # P2P 端口
-sudo ufw allow from trusted_ip to any port 26657  # RPC 端口（仅信任的 IP）
-sudo ufw allow from trusted_ip to any port 8545   # JSON-RPC 端口（仅信任的 IP）
-```
-
-### 监控配置
-```bash
-# 启用详细日志
---log_level debug
-
-# 配置日志轮转（使用 logrotate）
-echo "/path/to/mailchat/logs/*.log {
-    daily
-    rotate 30
-    compress
-    delaycompress
-    missingok
-    create 644 mailchat mailchat
-    postrotate
-        systemctl reload mailchatd
-    endscript
-}" | sudo tee /etc/logrotate.d/mailchatd
-```
-
-## 故障排除
-
-### 常见问题
-1. **创世文件验证失败**：检查 JSON 格式和必需字段
-2. **密钥环错误**：确保密钥环类型和路径正确
-3. **端口冲突**：检查 26656、26657、8545 端口是否被占用
-4. **权限问题**：确保节点数据目录有适当权限
-
-### 日志分析
-```bash
-# 查看最新日志
-tail -f "$CHAINDIR/node.log"
-
-# 搜索错误信息
-grep -i error "$CHAINDIR/node.log"
-
-# 查看共识日志
-grep -i consensus "$CHAINDIR/node.log"
-```
-
-### 数据重置
-```bash
-# 重置节点数据（保留配置）
-mailchatd tendermint unsafe-reset-all --home "$CHAINDIR"
-
-# 完全重新开始
-rm -rf "$CHAINDIR"
-# 然后重新执行初始化流程
-```
-
-## 钱包连接
-
-### MetaMask 配置
-- 网络名称：MailChat Local
-- RPC URL：http://localhost:8545
-- 链 ID：26000
-- 货币符号：MCC
-- 区块浏览器 URL：（可选）
-
-### 测试交易
-```bash
-# 发送代币交易
-mailchatd tx bank send validator user1 1000000000000000000amcc \
-  --gas-prices 0.0001amcc \
-  --gas auto \
-  --gas-adjustment 1.5 \
-  --keyring-backend "$KEYRING" \
-  --home "$CHAINDIR" \
-  --chain-id "$CHAINID"
-```
-
-## 升级和维护
-
-### 软件升级
 ```bash
 # 停止节点
 sudo systemctl stop mailchatd
 
-# 备份数据
-cp -r "$CHAINDIR" "$CHAINDIR.backup.$(date +%Y%m%d)"
+# 重置节点状态（保留密钥）
+mailchatd comet unsafe-reset-all --home $NODE_HOME
 
-# 更新二进制文件
-make install
+# 重新下载创世文件
+curl -o $NODE_HOME/config/genesis.json https://raw.githubusercontent.com/mail-chat-chain/mainnet/main/genesis.json
+
+# 使用状态同步（可选）
+sed -i 's/enable = false/enable = true/' $NODE_HOME/config/config.toml
 
 # 重启节点
 sudo systemctl start mailchatd
 ```
 
-### 定期维护
-- 定期备份验证者私钥
-- 监控磁盘空间使用情况
-- 检查日志中的错误信息
-- 保持软件版本更新
+#### 2. 验证人被Jail
+
+```bash
+# 检查jail原因
+mailchatd query slashing signing-info $(mailchatd tendermint show-validator --home $NODE_HOME) --home $NODE_HOME
+
+# 等待jail时间结束后，执行unjail
+mailchatd tx slashing unjail \
+  --from=validator \
+  --chain-id=mailchatd_26000 \
+  --gas=200000 \
+  --gas-prices=0.025amcc \
+  --home=$NODE_HOME
+```
+
+#### 3. 双签保护
+
+```bash
+# 确保只有一个节点实例使用同一个验证人密钥
+# 检查是否有多个进程
+ps aux | grep mailchatd
+
+# 使用priv_validator_state.json跟踪签名状态
+cat $NODE_HOME/data/priv_validator_state.json
+```
+
+### 数据备份与恢复
+
+#### 自动备份脚本
+
+创建 `~/backup_node.sh`:
+
+```bash
+#!/bin/bash
+
+BACKUP_DIR="/backup/mailchatd"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+NODE_HOME="${NODE_HOME:-$HOME/.mailchatd}"
+
+echo "Starting backup at $(date)"
+
+# 创建备份目录
+mkdir -p $BACKUP_DIR
+
+# 停止服务（可选，用于冷备份）
+# sudo systemctl stop mailchatd
+
+# 备份关键文件
+tar -czf $BACKUP_DIR/keys_backup_$TIMESTAMP.tar.gz \
+    $NODE_HOME/config/priv_validator_key.json \
+    $NODE_HOME/config/node_key.json \
+    $NODE_HOME/config/genesis.json \
+    $NODE_HOME/data/priv_validator_state.json
+
+# 备份完整数据（可选）
+# tar -czf $BACKUP_DIR/full_backup_$TIMESTAMP.tar.gz $NODE_HOME/
+
+# 重启服务（如果之前停止了）
+# sudo systemctl start mailchatd
+
+# 保留最近7天的备份
+find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
+
+echo "Backup completed: $BACKUP_DIR/keys_backup_$TIMESTAMP.tar.gz"
+```
+
+#### 恢复流程
+
+```bash
+# 1. 停止服务
+sudo systemctl stop mailchatd mailchatd-mail
+
+# 2. 恢复备份
+cd $HOME
+tar -xzf /backup/mailchatd/keys_backup_TIMESTAMP.tar.gz
+
+# 3. 验证文件
+ls -la $NODE_HOME/config/*.json
+
+# 4. 重启服务
+sudo systemctl start mailchatd
+sudo systemctl start mailchatd-mail
+
+# 5. 检查状态
+mailchatd status --home $NODE_HOME
+```
 
 ---
 
-*此文档提供了完整的手动部署流程，可根据具体需求进行调整和定制。*
+## 安全最佳实践
+
+### 防火墙配置
+
+```bash
+# 基础防火墙规则
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# SSH访问（限制IP）
+sudo ufw allow from YOUR_TRUSTED_IP to any port 22
+
+# 必要的区块链端口
+sudo ufw allow 26656/tcp comment 'P2P'
+sudo ufw limit 26657/tcp comment 'RPC - rate limited'
+sudo ufw limit 8545/tcp comment 'EVM RPC - rate limited'
+
+# 邮件服务端口（如果需要）
+sudo ufw allow 587/tcp comment 'Submission'
+sudo ufw allow 993/tcp comment 'IMAPS'
+sudo ufw allow 8825/tcp comment 'SMTP'
+
+# Web服务（如果需要）
+sudo ufw allow 80/tcp comment 'HTTP'
+sudo ufw allow 443/tcp comment 'HTTPS'
+
+# 启用防火墙
+sudo ufw enable
+sudo ufw status numbered
+```
+
+### SSH安全加固
+
+```bash
+# 编辑SSH配置
+sudo nano /etc/ssh/sshd_config
+
+# 推荐设置：
+# PermitRootLogin no
+# PasswordAuthentication no
+# PubkeyAuthentication yes
+# Port 22XXX  # 更改默认端口
+
+# 重启SSH服务
+sudo systemctl restart sshd
+```
+
+### 密钥安全管理
+
+```bash
+# 1. 使用硬件安全模块（HSM）或密钥管理服务（KMS）
+# 2. 定期轮换节点密钥（node_key.json）
+# 3. 永不共享验证人密钥（priv_validator_key.json）
+# 4. 使用多重签名钱包管理大额资金
+
+# 加密备份
+gpg --symmetric --cipher-algo AES256 priv_validator_key.json
+
+# 解密
+gpg --decrypt priv_validator_key.json.gpg > priv_validator_key.json
+```
+
+### DDoS防护
+
+使用Nginx作为反向代理：
+
+```nginx
+# /etc/nginx/sites-available/mailchat-rpc
+limit_req_zone $binary_remote_addr zone=rpc:10m rate=10r/s;
+limit_conn_zone $binary_remote_addr zone=addr:10m;
+
+server {
+    listen 80;
+    server_name rpc.your-domain.com;
+    
+    location / {
+        limit_req zone=rpc burst=20 nodelay;
+        limit_conn addr 10;
+        
+        proxy_pass http://localhost:26657;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+### 安全检查清单
+
+- [ ] 验证人密钥已安全备份（多地点、加密存储）
+- [ ] 防火墙规则已正确配置
+- [ ] SSH已使用密钥认证，禁用密码登录
+- [ ] 系统自动安全更新已启用
+- [ ] 监控和告警系统已部署
+- [ ] 日志轮转已配置
+- [ ] 定期备份计划已实施并测试
+- [ ] 灾难恢复流程已文档化和演练
+- [ ] 双签保护措施已实施
+- [ ] DDoS防护已配置
+
+---
+
+## 附录
+
+### 有用的命令
+
+```bash
+# 查看验证人集合
+mailchatd query staking validators --status bonded --home $NODE_HOME
+
+# 查看自己的验证人信息
+mailchatd query staking validator $(mailchatd keys show validator --bech val -a --home $NODE_HOME) --home $NODE_HOME
+
+# 查看账户余额
+mailchatd query bank balances $(mailchatd keys show validator -a --home $NODE_HOME) --home $NODE_HOME
+
+# 发送交易
+mailchatd tx bank send validator recipient_address 1000000amcc \
+  --gas=auto --gas-adjustment=1.5 --gas-prices=0.025amcc \
+  --chain-id=mailchatd_26000 --home=$NODE_HOME
+
+# 委托到验证人
+mailchatd tx staking delegate validator_operator_address 10000000amcc \
+  --from=delegator --chain-id=mailchatd_26000 --home=$NODE_HOME
+
+# 查看治理提案
+mailchatd query gov proposals --home $NODE_HOME
+
+# 对提案投票
+mailchatd tx gov vote 1 yes --from=validator --chain-id=mailchatd_26000 --home=$NODE_HOME
+
+# 查看节点信息
+curl -s http://localhost:26657/status | jq
+
+# 查看连接的对等节点
+curl -s http://localhost:26657/net_info | jq '.result.peers[].node_info.moniker'
+
+# 导出节点ID
+mailchatd tendermint show-node-id --home $NODE_HOME
+
+# 导出验证人公钥
+mailchatd tendermint show-validator --home $NODE_HOME
+```
+
+### 故障排查命令
+
+```bash
+# 查看最近的错误日志
+sudo journalctl -u mailchatd -p err -n 100
+
+# 检查配置文件语法
+mailchatd genesis validate-genesis --home $NODE_HOME
+
+# 测试P2P连接
+nc -zv 43.134.188.44 26656
+nc -zv 43.156.5.216 26656
+nc -zv 129.226.150.87 26656
+
+# 检查端口监听
+netstat -tlnp | grep -E '26656|26657|8545'
+
+# 查看系统资源使用
+htop
+iotop
+df -h
+free -h
+```
+
+### 相关资源
+
+- **官方网站**: https://mailcoin.org
+- **技术文档**: https://docs.mailcoin.org
+- **区块浏览器**: https://explorer.mailcoin.org
+- **GitHub仓库**: https://github.com/mail-chat-chain/mailchatd
+- **创世文件**: https://raw.githubusercontent.com/mail-chat-chain/mainnet/main/genesis.json
+
+### 社区支持
+
+- **Discord**: https://discord.gg/mailchat
+- **Twitter**: https://twitter.com/mailchat_io
+- **Telegram**: https://t.me/mailchat_official
+
+---
+
+*本文档基于生产网络实际配置编写，持续更新中。最后更新时间：2025年8月*
