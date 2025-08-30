@@ -8,7 +8,9 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -286,7 +288,42 @@ func loadDNSConfig() (*DNSConfig, error) {
 }
 
 func getServerIP() string {
-	// 尝试获取公网IP
+	// Try to get public IP from multiple sources
+	ipServices := []string{
+		"https://api.ipify.org",
+		"https://icanhazip.com",
+		"https://ipinfo.io/ip",
+		"https://checkip.amazonaws.com",
+	}
+
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	for _, service := range ipServices {
+		resp, err := client.Get(service)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			continue
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			continue
+		}
+
+		ip := strings.TrimSpace(string(body))
+		// Validate IP address
+		if net.ParseIP(ip) != nil && !isPrivateIP(ip) {
+			return ip
+		}
+	}
+
+	// Fallback to local connection method
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
 		return "YOUR_SERVER_IP"
@@ -298,7 +335,41 @@ func getServerIP() string {
 }
 
 func getServerIPv6() string {
-	// 尝试获取公网IPv6
+	// Try to get public IPv6 from multiple sources
+	ipv6Services := []string{
+		"https://api6.ipify.org",
+		"https://v6.ident.me",
+	}
+
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	for _, service := range ipv6Services {
+		resp, err := client.Get(service)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			continue
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			continue
+		}
+
+		ip := strings.TrimSpace(string(body))
+		// Validate IPv6 address
+		parsedIP := net.ParseIP(ip)
+		if parsedIP != nil && parsedIP.To4() == nil && parsedIP.To16() != nil {
+			return ip
+		}
+	}
+
+	// Fallback to local connection method
 	conn, err := net.Dial("udp6", "[2001:4860:4860::8888]:80")
 	if err != nil {
 		return ""
@@ -311,6 +382,52 @@ func getServerIPv6() string {
 		return ip.String()
 	}
 	return ""
+}
+
+// isPrivateIP checks if an IP address is in a private range
+func isPrivateIP(ip string) bool {
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return true // Invalid IP, consider it private
+	}
+
+	// Check for private IPv4 ranges
+	if parsedIP.To4() != nil {
+		// 10.0.0.0/8
+		if parsedIP[12] == 10 {
+			return true
+		}
+		// 172.16.0.0/12
+		if parsedIP[12] == 172 && parsedIP[13] >= 16 && parsedIP[13] <= 31 {
+			return true
+		}
+		// 192.168.0.0/16
+		if parsedIP[12] == 192 && parsedIP[13] == 168 {
+			return true
+		}
+		// 127.0.0.0/8 (localhost)
+		if parsedIP[12] == 127 {
+			return true
+		}
+	}
+
+	// Check for private IPv6 ranges
+	if parsedIP.To4() == nil {
+		// fc00::/7 (unique local addresses)
+		if parsedIP[0] >= 0xfc && parsedIP[0] <= 0xfd {
+			return true
+		}
+		// fe80::/10 (link-local addresses)
+		if parsedIP[0] == 0xfe && (parsedIP[1]&0xc0) == 0x80 {
+			return true
+		}
+		// ::1 (localhost)
+		if parsedIP.IsLoopback() {
+			return true
+		}
+	}
+
+	return false
 }
 
 

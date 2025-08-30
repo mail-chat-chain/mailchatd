@@ -6,13 +6,14 @@
 2. [快速开始](#快速开始)
 3. [系统架构](#系统架构)
 4. [配置管理](#配置管理)
-5. [节点运维](#节点运维)
-6. [质押与治理](#质押与治理)
-7. [跨链桥（IBC）](#跨链桥ibc)
-8. [开发指南](#开发指南)
-9. [故障排除](#故障排除)
-10. [Account Abstraction (无 Bundler)](#account-abstraction-无-bundler)
-11. [参考资源](#参考资源)
+5. [邮件服务器配置](#邮件服务器配置)
+6. [节点运维](#节点运维)
+7. [质押与治理](#质押与治理)
+8. [跨链桥（IBC）](#跨链桥ibc)
+9. [开发指南](#开发指南)
+10. [故障排除](#故障排除)
+11. [Account Abstraction (无 Bundler)](#account-abstraction-无-bundler)
+12. [参考资源](#参考资源)
 
 ---
 
@@ -700,6 +701,160 @@ timeout_broadcast_tx_commit = "10s"
 # 限流
 max_body_bytes = 1000000  # 1MB
 max_header_bytes = 1048576
+```
+
+---
+
+## 邮件服务器配置
+
+### DNS配置和TLS证书
+
+邮件服务器使用ACME自动获取TLS证书，支持多种DNS提供商进行DNS-01验证。
+
+#### 支持的DNS提供商
+
+系统支持15种DNS提供商：
+
+| 编号 | 提供商 | 所需凭据 |
+|------|---------|----------|
+| 1 | Cloudflare | API Token |
+| 2 | Amazon Route53 | Access Key ID, Secret Access Key |
+| 3 | DigitalOcean | API Token |
+| 4 | GoDaddy | API Key, API Secret |
+| 5 | Google Cloud DNS | Service Account JSON |
+| 6 | Namecheap | API User, API Token, User IP |
+| 7 | Vultr | API Key |
+| 8 | Linode | API Token |
+| 9 | Azure DNS | Subscription ID, Resource Group, Tenant ID, Client ID, Client Secret |
+| 10 | OVH | Application Key, Application Secret, Consumer Key |
+| 11 | Hetzner | API Token |
+| 12 | Gandi | API Token |
+| 13 | Porkbun | API Key, Secret API Key |
+| 14 | DuckDNS | Token |
+| 15 | Hurricane Electric | Username, Password |
+
+#### DNS配置示例
+
+在配置文件中使用简化的提供商名称：
+
+```
+tls {
+    loader acme {
+        hostname $(hostname)
+        email postmaster@$(hostname)
+        agreed
+        challenge dns-01
+        dns cloudflare {
+            api_token YOUR_API_TOKEN
+        }
+    }
+}
+```
+
+### 自动化安装脚本
+
+项目提供`start.sh`脚本用于自动化部署：
+
+#### 功能特性
+
+1. **自动安装**：下载并安装mailchatd二进制文件
+2. **配置管理**：自动生成配置文件并设置DNS提供商
+3. **服务管理**：创建并启动systemd服务
+4. **公网IP检测**：自动获取服务器公网IP地址
+5. **多DNS支持**：支持15种DNS提供商的凭据配置
+
+#### 使用方法
+
+```bash
+# 运行安装脚本
+./start.sh
+
+# 脚本将引导您完成：
+# 1. 选择工作目录（默认：$NODE_HOME 或 /root/.mailchatd）
+# 2. 输入域名配置
+# 3. 选择DNS提供商
+# 4. 配置DNS凭据
+# 5. 自动启动服务
+```
+
+#### 配置文件模板
+
+系统使用`mailchatd.conf`作为配置模板，包含：
+
+- **基础变量**：域名、本地域名设置
+- **TLS配置**：ACME自动证书获取
+- **区块链配置**：以太坊兼容链连接
+- **存储配置**：SQLite数据库存储
+- **认证配置**：区块链钱包认证
+- **SMTP/IMAP服务**：邮件收发服务
+
+### 区块链集成
+
+#### 认证机制
+
+使用EVM兼容区块链进行用户认证：
+
+```
+auth.pass_evm blockchain_auth {
+    blockchain &mailchatd
+    storage &local_mailboxes
+}
+```
+
+#### 交易记录
+
+邮件操作会记录到区块链：
+
+```
+modify {
+    blockchain_tx &mailchatd
+}
+```
+
+### 服务管理
+
+#### Systemd服务
+
+系统创建两个服务：
+
+1. **mailchatd.service**：主邮件服务
+2. **mailchatd-mail.service**：邮件处理服务
+
+#### 环境配置
+
+服务使用`/etc/mailchatd/environment`环境文件：
+
+```
+NODE_HOME=/your/work/directory
+```
+
+### 故障排除
+
+#### 区块链同步问题
+
+如遇到区块链同步错误：
+
+```bash
+# 重置区块链数据
+mailchatd comet unsafe-reset-all
+
+# 重新下载genesis文件
+curl -o ~/.mailchatd/config/genesis.json https://raw.githubusercontent.com/your-repo/genesis.json
+```
+
+#### DNS配置验证
+
+使用DNS子命令验证配置：
+
+```bash
+# 检查DNS配置
+mailchatd dns check
+
+# 导出DNS记录
+mailchatd dns export
+
+# 配置向导
+mailchatd dns config
 ```
 
 ---

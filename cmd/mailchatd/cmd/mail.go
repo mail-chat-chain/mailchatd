@@ -109,7 +109,7 @@ var (
 func addMailCommands(rootCmd *cobra.Command) {
 	configPath = filepath.Join(ConfigDirectory, "mailchatd.conf")
 	AddGlobalStringFlag(rootCmd, "mail-config", "Configuration file to use", "MAILCHAT_CONFIG", configPath, &configPath)
-	fmt.Printf("Using config file: %s\n", configPath)
+	// fmt.Printf("Using config file: %s\n", configPath)
 
 	var (
 		logTargets []string

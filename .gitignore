@@ -30,5 +30,6 @@ yarn.lock
 contracts/@openzeppelin/*
 
 # Build files
+venv/
 build/
 .testnets
