@@ -72,7 +72,7 @@ install_mailchatd() {
     
     # Get system architecture
     local system_arch=$(get_system_arch)
-    local download_url="https://download.mailcoin.org/mailchatd-${system_arch}-v0.2.1"
+    local download_url="https://download.mailcoin.org/mailchatd-${system_arch}-v0.2.2"
     
     print_info "System architecture: $system_arch"
     print_info "Download URL: $download_url"
