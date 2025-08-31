@@ -209,18 +209,125 @@ export CHAINDIR="$HOME/.mailchatd"
 
 #### 2. 预编译合约
 
+MailChat Chain 提供丰富的预编译合约，实现 EVM 与 Cosmos SDK 原生功能的深度集成：
+
+| 地址 | 模块 | 功能描述 | Gas消耗 |
+|------|------|----------|---------|
+| `0x0000000000000000000000000000000000000100` | **P256验证** | secp256r1 椭圆曲线签名验证 | 基础: 3450 gas |
+| `0x0000000000000000000000000000000000000400` | **Bech32编码** | Cosmos地址编解码转换 | 基础: 6000 gas |
+| `0x0000000000000000000000000000000000000800` | **Staking质押** | 委托、解绑、重新委托操作 | 200000-300000 gas |
+| `0x0000000000000000000000000000000000000801` | **Distribution分配** | 奖励提取和分配管理 | 150000-250000 gas |
+| `0x0000000000000000000000000000000000000802` | **ICS20跨链** | IBC 代币跨链转账 | 300000-500000 gas |
+| `0x0000000000000000000000000000000000000803` | **Governance治理** | 链上提案创建与投票 | 100000-400000 gas |
+| `0x0000000000000000000000000000000000000804` | **Slashing惩罚** | 验证人惩罚和监禁管理 | 50000-150000 gas |
+| `0x0000000000000000000000000000000000000805` | **Bank银行** | 原生代币转账操作 | 50000-100000 gas |
+| `0x0000000000000000000000000000000000000806` | **ERC20模块** | ERC20代币与原生代币桥接 | 100000-200000 gas |
+| `0x0000000000000000000000000000000000000807` | **WERC20包装** | 包装代币功能 | 80000-150000 gas |
+| `0x0000000000000000000000000000000000000808` | **Account Abstraction** | 🆕 无Bundler账户抽象 | 10000-80000 gas |
+
+#### 预编译合约使用方法
+
+**1. 接口定义方式**
+
 ```solidity
-// 预编译合约地址映射
-0x0000000000000000000000000000000000000100 - P256 验证
-0x0000000000000000000000000000000000000400 - Bech32 编码
-0x0000000000000000000000000000000000000800 - Staking 质押
-0x0000000000000000000000000000000000000801 - Distribution 分配
-0x0000000000000000000000000000000000000802 - ICS20 跨链转账
-0x0000000000000000000000000000000000000803 - Governance 治理
-0x0000000000000000000000000000000000000804 - Slashing 惩罚
-0x0000000000000000000000000000000000000805 - Bank 银行
-0x0000000000000000000000000000000000000806 - ERC20 模块
-0x0000000000000000000000000000000000000807 - WERC20 包装代币
+// Staking 预编译接口
+interface IStaking {
+    function delegate(
+        address delegator,
+        string memory validator,
+        uint256 amount
+    ) external returns (bool);
+    
+    function undelegate(
+        address delegator,
+        string memory validator,
+        uint256 amount
+    ) external returns (uint256);
+    
+    function redelegate(
+        address delegator,
+        string memory srcValidator,
+        string memory dstValidator,
+        uint256 amount
+    ) external returns (uint256);
+}
+
+// Governance 预编译接口
+interface IGovernance {
+    function submitProposal(
+        string memory title,
+        string memory description,
+        uint256 initialDeposit
+    ) external returns (uint64);
+    
+    function vote(
+        uint64 proposalId,
+        uint8 option
+    ) external returns (bool);
+    
+    function deposit(
+        uint64 proposalId,
+        uint256 amount
+    ) external returns (bool);
+}
+
+// ICS20 跨链转账接口
+interface IICS20 {
+    function transfer(
+        string memory sourcePort,
+        string memory sourceChannel,
+        string memory denom,
+        uint256 amount,
+        address sender,
+        string memory receiver,
+        RevisionHeight memory revisionHeight,
+        uint64 timeoutTimestamp,
+        string memory memo
+    ) external returns (bool);
+    
+    struct RevisionHeight {
+        uint64 revisionNumber;
+        uint64 revisionHeight;
+    }
+}
+```
+
+**2. 低级别调用方式**
+
+```solidity
+// 直接调用预编译合约
+contract PrecompileExample {
+    function callPrecompile(
+        address precompileAddr,
+        bytes memory data
+    ) external returns (bytes memory result) {
+        (bool success, bytes memory returnData) = precompileAddr.call(data);
+        require(success, "Precompile call failed");
+        return returnData;
+    }
+    
+    // Account Abstraction 方法选择器示例
+    function validateUserOp(bytes memory userOpData) external {
+        bytes memory data = abi.encodePacked(bytes4(0x00000001), userOpData);
+        this.callPrecompile(0x0000000000000000000000000000000000000808, data);
+    }
+}
+```
+
+**3. 方法选择器参考**
+
+Account Abstraction 预编译 (`0x808`) 方法：
+
+```solidity
+// 方法选择器映射
+bytes4 constant VALIDATE_USER_OP = 0x00000001;     // validateUserOp - 50000 gas
+bytes4 constant GET_USER_OP_HASH = 0x00000002;     // getUserOpHash - 10000 gas
+bytes4 constant CREATE_ACCOUNT = 0x00000003;       // createAccount - 60000 gas
+bytes4 constant GET_NONCE = 0x00000004;            // getNonce - 5000 gas
+bytes4 constant VALIDATE_PAYMASTER = 0x00000005;   // validatePaymaster - 30000 gas
+bytes4 constant CALCULATE_PREFUND = 0x00000006;    // calculatePrefund - 15000 gas
+bytes4 constant AGGREGATE_SIGNATURES = 0x00000007; // aggregateSignatures - 80000 gas
+bytes4 constant SIMULATE_VALIDATION = 0x00000008;  // simulateValidation - 40000 gas
 ```
 
 ---
@@ -1497,67 +1604,716 @@ cosmos_balance = ledger.query_bank_balance(wallet.address(), 'amcc')
 
 ### 二、智能合约开发
 
-#### 2.1 合约模板
+#### 2.1 预编译合约集成示例
+
+**完整的 DeFi 质押池合约**
 
 ```solidity
-// MailChatToken.sol
+// StakingPool.sol - 使用预编译合约的质押池
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract MailChatToken is ERC20, Ownable {
-    // 预编译合约接口
+// 预编译合约接口
+interface IStaking {
+    function delegate(address delegator, string memory validator, uint256 amount) external returns (bool);
+    function undelegate(address delegator, string memory validator, uint256 amount) external returns (uint256);
+    function redelegate(address delegator, string memory srcValidator, string memory dstValidator, uint256 amount) external returns (uint256);
+}
+
+interface IDistribution {
+    function withdrawDelegatorReward(address delegator, string memory validator) external returns (uint256);
+    function withdrawAllRewards(address delegator) external returns (uint256);
+}
+
+interface IGovernance {
+    function vote(uint64 proposalId, uint8 option) external returns (bool);
+    function submitProposal(string memory title, string memory description, uint256 initialDeposit) external returns (uint64);
+}
+
+contract MailChatStakingPool is ERC20, ReentrancyGuard {
+    // 预编译合约常量地址
     IStaking constant STAKING = IStaking(0x0000000000000000000000000000000000000800);
-    IDistribution constant DIST = IDistribution(0x0000000000000000000000000000000000000801);
+    IDistribution constant DISTRIBUTION = IDistribution(0x0000000000000000000000000000000000000801);
+    IGovernance constant GOVERNANCE = IGovernance(0x0000000000000000000000000000000000000803);
     
-    constructor() ERC20("MailChat Token", "MCT") Ownable(msg.sender) {
-        _mint(msg.sender, 1000000 * 10**decimals());
+    string public validator;
+    address public manager;
+    uint256 public totalStaked;
+    
+    mapping(address => uint256) public userShares;
+    mapping(uint64 => mapping(address => uint8)) public userVotes; // proposalId => user => vote
+    
+    event Staked(address indexed user, uint256 amount, uint256 shares);
+    event Unstaked(address indexed user, uint256 amount, uint256 shares);
+    event RewardsDistributed(uint256 totalRewards, uint256 timestamp);
+    event ProposalVoted(uint64 indexed proposalId, uint8 option, uint256 votingPower);
+
+    modifier onlyManager() {
+        require(msg.sender == manager, "Only manager can call this");
+        _;
     }
-    
-    // 质押奖励分发
-    function distributeRewards(string memory validator) external {
-        uint256 rewards = DIST.withdrawDelegatorReward(
-            address(this),
-            validator
+
+    constructor(string memory _validator, address _manager) 
+        ERC20("MailChat Staking Shares", "mcSTAKE") {
+        validator = _validator;
+        manager = _manager;
+    }
+
+    /**
+     * @dev 用户质押 MCC 代币，获得质押份额
+     */
+    function stake() external payable nonReentrant {
+        require(msg.value > 0, "Cannot stake 0");
+        
+        uint256 shares;
+        if (totalSupply() == 0) {
+            shares = msg.value;
+        } else {
+            shares = (msg.value * totalSupply()) / totalStaked;
+        }
+        
+        // 通过预编译合约委托质押
+        require(
+            STAKING.delegate(address(this), validator, msg.value),
+            "Delegation failed"
         );
         
+        totalStaked += msg.value;
+        userShares[msg.sender] += shares;
+        _mint(msg.sender, shares);
+        
+        emit Staked(msg.sender, msg.value, shares);
+    }
+
+    /**
+     * @dev 用户解除质押，销毁份额获得 MCC
+     */
+    function unstake(uint256 shares) external nonReentrant {
+        require(shares > 0, "Cannot unstake 0");
+        require(balanceOf(msg.sender) >= shares, "Insufficient shares");
+        
+        uint256 amountToUnstake = (shares * totalStaked) / totalSupply();
+        
+        // 通过预编译合约解除委托
+        uint256 unbondingTime = STAKING.undelegate(address(this), validator, amountToUnstake);
+        
+        totalStaked -= amountToUnstake;
+        userShares[msg.sender] -= shares;
+        _burn(msg.sender, shares);
+        
+        // 注意：实际的MCC将在unbondingTime之后可以提取
+        // 这里简化处理，实际应该实现unbonding队列管理
+        
+        emit Unstaked(msg.sender, amountToUnstake, shares);
+    }
+
+    /**
+     * @dev 领取质押奖励并重新投入
+     */
+    function compoundRewards() external onlyManager {
+        uint256 rewards = DISTRIBUTION.withdrawDelegatorReward(address(this), validator);
+        
         if (rewards > 0) {
-            // 分发给代币持有者
-            uint256 rewardPerToken = rewards / totalSupply();
-            // 实现分发逻辑...
+            // 将奖励重新质押
+            require(
+                STAKING.delegate(address(this), validator, rewards),
+                "Reward restaking failed"
+            );
+            
+            totalStaked += rewards;
+            emit RewardsDistributed(rewards, block.timestamp);
+        }
+    }
+
+    /**
+     * @dev 治理投票 - 使用质押池的总投票权重
+     */
+    function voteOnProposal(uint64 proposalId, uint8 option) external onlyManager {
+        require(option <= 3, "Invalid vote option"); // 0=Abstain, 1=Yes, 2=No, 3=NoWithVeto
+        
+        require(
+            GOVERNANCE.vote(proposalId, option),
+            "Governance vote failed"
+        );
+        
+        emit ProposalVoted(proposalId, option, totalStaked);
+    }
+
+    /**
+     * @dev 创建治理提案
+     */
+    function createProposal(
+        string memory title,
+        string memory description
+    ) external payable onlyManager returns (uint64) {
+        require(msg.value >= 10000000000000000000000, "Insufficient deposit"); // 10000 MCC minimum
+        
+        uint64 proposalId = GOVERNANCE.submitProposal(title, description, msg.value);
+        return proposalId;
+    }
+
+    /**
+     * @dev 获取用户的质押信息
+     */
+    function getUserInfo(address user) external view returns (
+        uint256 shares,
+        uint256 stakedAmount,
+        uint256 sharePercentage
+    ) {
+        shares = balanceOf(user);
+        if (totalSupply() > 0) {
+            stakedAmount = (shares * totalStaked) / totalSupply();
+            sharePercentage = (shares * 10000) / totalSupply(); // 基点表示
+        }
+    }
+
+    /**
+     * @dev 切换验证人（重新委托）
+     */
+    function switchValidator(string memory newValidator) external onlyManager {
+        uint256 completionTime = STAKING.redelegate(
+            address(this),
+            validator,
+            newValidator,
+            totalStaked
+        );
+        
+        validator = newValidator;
+        // 注意：重新委托有完成时间限制
+    }
+}
+```
+
+**跨链桥接合约示例**
+
+```solidity
+// CrossChainBridge.sol - 使用 ICS20 预编译的跨链桥
+pragma solidity ^0.8.20;
+
+interface IICS20 {
+    function transfer(
+        string memory sourcePort,
+        string memory sourceChannel,
+        string memory denom,
+        uint256 amount,
+        address sender,
+        string memory receiver,
+        RevisionHeight memory revisionHeight,
+        uint64 timeoutTimestamp,
+        string memory memo
+    ) external returns (bool);
+    
+    struct RevisionHeight {
+        uint64 revisionNumber;
+        uint64 revisionHeight;
+    }
+}
+
+interface IBankPrecompile {
+    function send(
+        address from,
+        address to,
+        uint256 amount,
+        string memory denom
+    ) external returns (bool);
+}
+
+contract MailChatBridge {
+    IICS20 constant ICS20 = IICS20(0x0000000000000000000000000000000000000802);
+    IBankPrecompile constant BANK = IBankPrecompile(0x0000000000000000000000000000000000000805);
+    
+    mapping(string => bool) public supportedChannels;
+    mapping(address => uint256) public pendingTransfers;
+    
+    event CrossChainTransferInitiated(
+        address indexed sender,
+        string recipient,
+        uint256 amount,
+        string channel,
+        string memo
+    );
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not authorized");
+        _;
+    }
+    
+    address public owner;
+    
+    constructor() {
+        owner = msg.sender;
+        // 添加支持的IBC通道
+        supportedChannels["channel-0"] = true; // Osmosis
+        supportedChannels["channel-1"] = true; // Cosmos Hub
+    }
+    
+    /**
+     * @dev 跨链转账到其他Cosmos链
+     */
+    function bridgeToChain(
+        string memory channel,
+        string memory cosmosRecipient,
+        string memory memo
+    ) external payable {
+        require(msg.value > 0, "Amount must be greater than 0");
+        require(supportedChannels[channel], "Unsupported channel");
+        require(bytes(cosmosRecipient).length > 0, "Invalid recipient");
+        
+        // 设置10分钟超时
+        uint64 timeoutTimestamp = uint64(block.timestamp + 600) * 1e9;
+        
+        // 执行IBC转账
+        bool success = ICS20.transfer(
+            "transfer",
+            channel,
+            "amcc",
+            msg.value,
+            msg.sender,
+            cosmosRecipient,
+            IICS20.RevisionHeight(0, 0),
+            timeoutTimestamp,
+            memo
+        );
+        
+        require(success, "Cross-chain transfer failed");
+        
+        emit CrossChainTransferInitiated(
+            msg.sender,
+            cosmosRecipient,
+            msg.value,
+            channel,
+            memo
+        );
+    }
+    
+    /**
+     * @dev 批量跨链转账
+     */
+    function batchBridge(
+        string memory channel,
+        string[] memory recipients,
+        uint256[] memory amounts,
+        string memory memo
+    ) external payable {
+        require(recipients.length == amounts.length, "Array length mismatch");
+        require(recipients.length <= 10, "Too many recipients");
+        
+        uint256 totalAmount = 0;
+        for (uint256 i = 0; i < amounts.length; i++) {
+            totalAmount += amounts[i];
+        }
+        require(msg.value >= totalAmount, "Insufficient payment");
+        
+        for (uint256 i = 0; i < recipients.length; i++) {
+            if (amounts[i] > 0) {
+                uint64 timeoutTimestamp = uint64(block.timestamp + 600) * 1e9;
+                
+                ICS20.transfer(
+                    "transfer",
+                    channel,
+                    "amcc",
+                    amounts[i],
+                    msg.sender,
+                    recipients[i],
+                    IICS20.RevisionHeight(0, 0),
+                    timeoutTimestamp,
+                    memo
+                );
+            }
         }
     }
 }
 ```
 
-#### 2.2 部署脚本
+#### 2.2 Account Abstraction 预编译使用
+
+**无 Bundler 的 EIP-4337 实现**
+
+```solidity
+// BundlerFreeAccount.sol - 使用预编译的账户抽象
+pragma solidity ^0.8.20;
+
+interface IAccountAbstraction {
+    function validateUserOp(bytes memory userOpData) external returns (bytes32);
+    function getUserOpHash(bytes memory userOpData) external view returns (bytes32);
+    function createAccount(address owner, bytes memory initData) external returns (address);
+    function getNonce(address account) external view returns (uint256);
+    function validatePaymaster(bytes memory paymasterData) external returns (bytes memory, bytes memory);
+    function calculatePrefund(bytes memory userOpData) external view returns (uint256);
+    function simulateValidation(bytes memory userOpData) external view returns (bytes memory, bytes memory, bytes memory);
+}
+
+contract BundlerFreeEntryPoint {
+    IAccountAbstraction constant AA = IAccountAbstraction(0x0000000000000000000000000000000000000808);
+    
+    struct UserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        uint256 callGasLimit;
+        uint256 verificationGasLimit;
+        uint256 preVerificationGas;
+        uint256 maxFeePerGas;
+        uint256 maxPriorityFeePerGas;
+        bytes paymasterAndData;
+        bytes signature;
+    }
+    
+    // 用户操作队列 - 替代传统的 bundler 内存池
+    mapping(bytes32 => UserOperation) public queuedOps;
+    bytes32[] public executionQueue;
+    mapping(address => uint256) public executorRewards;
+    
+    event UserOperationQueued(bytes32 indexed hash, address indexed sender);
+    event UserOperationExecuted(bytes32 indexed hash, address indexed executor, uint256 reward);
+    
+    /**
+     * @dev 用户直接提交操作到链上队列
+     */
+    function submitUserOperation(
+        UserOperation memory userOp,
+        uint256 executorTip
+    ) external payable returns (bytes32) {
+        require(msg.value >= executorTip + userOp.maxFeePerGas * userOp.verificationGasLimit, "Insufficient payment");
+        
+        // 使用预编译验证和获取哈希
+        bytes memory userOpData = abi.encode(userOp);
+        bytes32 hash = AA.getUserOpHash(userOpData);
+        
+        // 预验证操作
+        AA.validateUserOp(userOpData);
+        
+        // 添加到执行队列
+        queuedOps[hash] = userOp;
+        executionQueue.push(hash);
+        
+        emit UserOperationQueued(hash, userOp.sender);
+        return hash;
+    }
+    
+    /**
+     * @dev 任何人都可以执行队列中的操作并获得奖励
+     */
+    function executeUserOperations(uint256 maxOps) external {
+        require(maxOps > 0 && maxOps <= 5, "Invalid batch size");
+        
+        uint256 opsToExecute = maxOps > executionQueue.length ? executionQueue.length : maxOps;
+        uint256 totalReward = 0;
+        
+        for (uint256 i = 0; i < opsToExecute; i++) {
+            bytes32 hash = executionQueue[i];
+            UserOperation memory userOp = queuedOps[hash];
+            
+            // 使用预编译模拟验证
+            bytes memory userOpData = abi.encode(userOp);
+            (bytes memory accountValidation, bytes memory paymasterValidation, bytes memory aggregatorValidation) = AA.simulateValidation(userOpData);
+            
+            // 执行用户操作
+            if (_executeUserOp(userOp)) {
+                // 给执行者奖励
+                uint256 reward = userOp.maxPriorityFeePerGas * userOp.callGasLimit / 100; // 1% 作为奖励
+                totalReward += reward;
+                
+                emit UserOperationExecuted(hash, msg.sender, reward);
+            }
+            
+            // 从队列中移除
+            delete queuedOps[hash];
+        }
+        
+        // 清理执行队列
+        for (uint256 i = opsToExecute; i < executionQueue.length; i++) {
+            executionQueue[i - opsToExecute] = executionQueue[i];
+        }
+        for (uint256 i = 0; i < opsToExecute; i++) {
+            executionQueue.pop();
+        }
+        
+        // 支付奖励
+        if (totalReward > 0) {
+            executorRewards[msg.sender] += totalReward;
+            payable(msg.sender).transfer(totalReward);
+        }
+    }
+    
+    function _executeUserOp(UserOperation memory userOp) internal returns (bool) {
+        // 实际执行用户操作的逻辑
+        // 这里简化处理，实际应该调用目标合约
+        (bool success, ) = userOp.sender.call{gas: userOp.callGasLimit}(userOp.callData);
+        return success;
+    }
+    
+    /**
+     * @dev 创建新的智能账户
+     */
+    function createSmartAccount(
+        address owner,
+        bytes memory initData
+    ) external returns (address) {
+        return AA.createAccount(owner, initData);
+    }
+    
+    /**
+     * @dev 获取账户的下一个nonce
+     */
+    function getAccountNonce(address account) external view returns (uint256) {
+        return AA.getNonce(account);
+    }
+}
+```
+
+#### 2.3 部署和测试脚本
 
 ```javascript
-// deploy.js
+// deploy-precompile-examples.js
 const hre = require("hardhat");
 
 async function main() {
-    // 编译合约
-    await hre.run('compile');
+    console.log("Deploying MailChat Chain precompile integration contracts...");
     
-    // 部署
-    const Token = await hre.ethers.getContractFactory("MailChatToken");
-    const token = await Token.deploy();
-    await token.waitForDeployment();
+    // 1. 部署质押池合约
+    console.log("\n1. Deploying Staking Pool...");
+    const StakingPool = await hre.ethers.getContractFactory("MailChatStakingPool");
+    const stakingPool = await StakingPool.deploy(
+        "cosmosvaloper1abcdef...", // 验证人地址
+        "0x1234567890123456789012345678901234567890" // 管理员地址
+    );
+    await stakingPool.waitForDeployment();
+    console.log("✅ StakingPool deployed to:", await stakingPool.getAddress());
     
-    console.log("Token deployed to:", await token.getAddress());
+    // 2. 部署跨链桥合约
+    console.log("\n2. Deploying Cross-Chain Bridge...");
+    const Bridge = await hre.ethers.getContractFactory("MailChatBridge");
+    const bridge = await Bridge.deploy();
+    await bridge.waitForDeployment();
+    console.log("✅ CrossChainBridge deployed to:", await bridge.getAddress());
     
-    // 验证合约
-    await hre.run("verify:verify", {
-        address: await token.getAddress(),
-        constructorArguments: [],
-    });
+    // 3. 部署 Account Abstraction 入口点
+    console.log("\n3. Deploying Bundler-Free EntryPoint...");
+    const EntryPoint = await hre.ethers.getContractFactory("BundlerFreeEntryPoint");
+    const entryPoint = await EntryPoint.deploy();
+    await entryPoint.waitForDeployment();
+    console.log("✅ BundlerFreeEntryPoint deployed to:", await entryPoint.getAddress());
+    
+    // 4. 测试预编译合约连接
+    console.log("\n4. Testing precompile connections...");
+    
+    // 测试质押预编译
+    try {
+        const [signer] = await hre.ethers.getSigners();
+        const tx = await stakingPool.connect(signer).stake({
+            value: hre.ethers.parseEther("100") // 质押 100 MCC
+        });
+        await tx.wait();
+        console.log("✅ Staking precompile test successful");
+    } catch (error) {
+        console.log("❌ Staking precompile test failed:", error.message);
+    }
+    
+    // 测试治理预编译
+    try {
+        const proposalTx = await stakingPool.createProposal(
+            "Test Proposal",
+            "This is a test governance proposal",
+            { value: hre.ethers.parseEther("10000") } // 10000 MCC 押金
+        );
+        const receipt = await proposalTx.wait();
+        console.log("✅ Governance precompile test successful");
+    } catch (error) {
+        console.log("❌ Governance precompile test failed:", error.message);
+    }
+    
+    // 5. 输出部署总结
+    console.log("\n📋 Deployment Summary:");
+    console.log("=====================================");
+    console.log("StakingPool:        ", await stakingPool.getAddress());
+    console.log("CrossChainBridge:   ", await bridge.getAddress());
+    console.log("BundlerFreeEntryPoint:", await entryPoint.getAddress());
+    console.log("\n🔗 Precompile Addresses:");
+    console.log("P256 Verification:   0x0000000000000000000000000000000000000100");
+    console.log("Bech32 Encoding:     0x0000000000000000000000000000000000000400");
+    console.log("Staking:            0x0000000000000000000000000000000000000800");
+    console.log("Distribution:       0x0000000000000000000000000000000000000801");
+    console.log("ICS20 Transfer:     0x0000000000000000000000000000000000000802");
+    console.log("Governance:         0x0000000000000000000000000000000000000803");
+    console.log("Slashing:           0x0000000000000000000000000000000000000804");
+    console.log("Bank:               0x0000000000000000000000000000000000000805");
+    console.log("ERC20 Module:       0x0000000000000000000000000000000000000806");
+    console.log("WERC20 Wrapper:     0x0000000000000000000000000000000000000807");
+    console.log("Account Abstraction: 0x0000000000000000000000000000000000000808");
 }
 
 main().catch((error) => {
     console.error(error);
     process.exitCode = 1;
+});
+```
+
+**预编译合约测试脚本**
+
+```javascript
+// test-precompiles.js
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+
+describe("MailChat Precompile Integration Tests", function () {
+    let stakingPool, bridge, entryPoint;
+    let owner, user1, user2;
+    
+    // 预编译合约地址
+    const STAKING_PRECOMPILE = "0x0000000000000000000000000000000000000800";
+    const GOVERNANCE_PRECOMPILE = "0x0000000000000000000000000000000000000803";
+    const ICS20_PRECOMPILE = "0x0000000000000000000000000000000000000802";
+    const AA_PRECOMPILE = "0x0000000000000000000000000000000000000808";
+    
+    beforeEach(async function () {
+        [owner, user1, user2] = await ethers.getSigners();
+        
+        // 部署测试合约
+        const StakingPool = await ethers.getContractFactory("MailChatStakingPool");
+        stakingPool = await StakingPool.deploy(
+            "cosmosvaloper1test...",
+            owner.address
+        );
+        
+        const Bridge = await ethers.getContractFactory("MailChatBridge");
+        bridge = await Bridge.deploy();
+        
+        const EntryPoint = await ethers.getContractFactory("BundlerFreeEntryPoint");
+        entryPoint = await EntryPoint.deploy();
+    });
+    
+    describe("Staking Precompile Integration", function () {
+        it("Should allow users to stake through precompile", async function () {
+            const stakeAmount = ethers.parseEther("100");
+            
+            await expect(
+                stakingPool.connect(user1).stake({ value: stakeAmount })
+            ).to.emit(stakingPool, "Staked");
+            
+            const userShares = await stakingPool.balanceOf(user1.address);
+            expect(userShares).to.equal(stakeAmount);
+        });
+        
+        it("Should compound rewards automatically", async function () {
+            // 先质押
+            await stakingPool.connect(user1).stake({ 
+                value: ethers.parseEther("100") 
+            });
+            
+            // 模拟有奖励可领取
+            await expect(
+                stakingPool.compoundRewards()
+            ).to.emit(stakingPool, "RewardsDistributed");
+        });
+    });
+    
+    describe("Governance Precompile Integration", function () {
+        it("Should create governance proposals", async function () {
+            const depositAmount = ethers.parseEther("10000");
+            
+            const proposalId = await stakingPool.createProposal.staticCall(
+                "Test Proposal",
+                "Description",
+                { value: depositAmount }
+            );
+            
+            expect(proposalId).to.be.a('bigint');
+        });
+        
+        it("Should vote on proposals", async function () {
+            // 先创建提案
+            const tx = await stakingPool.createProposal(
+                "Test Proposal",
+                "Description",
+                { value: ethers.parseEther("10000") }
+            );
+            const receipt = await tx.wait();
+            
+            // 投票
+            await expect(
+                stakingPool.voteOnProposal(1, 1) // proposalId=1, option=Yes
+            ).to.emit(stakingPool, "ProposalVoted");
+        });
+    });
+    
+    describe("ICS20 Precompile Integration", function () {
+        it("Should initiate cross-chain transfers", async function () {
+            const transferAmount = ethers.parseEther("50");
+            
+            await expect(
+                bridge.connect(user1).bridgeToChain(
+                    "channel-0",
+                    "cosmos1recipient...",
+                    "test memo",
+                    { value: transferAmount }
+                )
+            ).to.emit(bridge, "CrossChainTransferInitiated");
+        });
+        
+        it("Should handle batch transfers", async function () {
+            const recipients = [
+                "cosmos1recipient1...",
+                "cosmos1recipient2..."
+            ];
+            const amounts = [
+                ethers.parseEther("25"),
+                ethers.parseEther("25")
+            ];
+            const totalAmount = ethers.parseEther("50");
+            
+            await expect(
+                bridge.connect(user1).batchBridge(
+                    "channel-0",
+                    recipients,
+                    amounts,
+                    "batch memo",
+                    { value: totalAmount }
+                )
+            ).to.not.be.reverted;
+        });
+    });
+    
+    describe("Account Abstraction Precompile Integration", function () {
+        it("Should create smart accounts", async function () {
+            const accountAddress = await entryPoint.createSmartAccount.staticCall(
+                user1.address,
+                "0x" // 空的初始化数据
+            );
+            
+            expect(accountAddress).to.match(/^0x[a-fA-F0-9]{40}$/);
+        });
+        
+        it("Should queue and execute user operations", async function () {
+            const userOp = {
+                sender: user1.address,
+                nonce: 0,
+                initCode: "0x",
+                callData: "0x",
+                callGasLimit: 100000,
+                verificationGasLimit: 100000,
+                preVerificationGas: 21000,
+                maxFeePerGas: ethers.parseUnits("20", "gwei"),
+                maxPriorityFeePerGas: ethers.parseUnits("2", "gwei"),
+                paymasterAndData: "0x",
+                signature: "0x"
+            };
+            
+            const executorTip = ethers.parseEther("0.01");
+            const totalPayment = executorTip + BigInt(userOp.maxFeePerGas) * BigInt(userOp.verificationGasLimit);
+            
+            await expect(
+                entryPoint.connect(user1).submitUserOperation(
+                    userOp,
+                    executorTip,
+                    { value: totalPayment }
+                )
+            ).to.emit(entryPoint, "UserOperationQueued");
+        });
+    });
 });
 ```
 

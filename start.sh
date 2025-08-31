@@ -10,15 +10,15 @@ NC='\033[0m' # No Color
 
 # Print colored messages
 print_success() {
-    echo -e "${GREEN}✓${NC} $1"
+    printf "${GREEN}✓${NC} %s\n" "$1"
 }
 
 print_error() {
-    echo -e "${RED}✗${NC} $1"
+    printf "${RED}✗${NC} %s\n" "$1"
 }
 
 print_info() {
-    echo -e "${YELLOW}ℹ${NC} $1"
+    printf "${YELLOW}ℹ${NC} %s\n" "$1"
 }
 
 # Detect system architecture
@@ -59,14 +59,32 @@ get_public_ip() {
 install_mailchatd() {
     print_info "Starting mailchatd installation..."
     
-    # Check if already installed
-    if command -v mailchatd &> /dev/null; then
-        print_success "mailchatd is already installed"
-        local version=$(mailchatd version 2>/dev/null || echo "unknown")
+    # Check if already installed in /usr/local/bin
+    if [ -x "/usr/local/bin/mailchatd" ]; then
+        print_success "mailchatd is already installed in /usr/local/bin"
+        local version=$(/usr/local/bin/mailchatd version 2>/dev/null | grep -v "Using config file" | head -n1 || echo "unknown")
+        if [ -z "$version" ]; then
+            version="unknown"
+        fi
         print_info "Current version: $version"
-        read -p "Do you want to reinstall? (y/N): " reinstall
+        printf "Do you want to reinstall? (y/N): "
+        read reinstall
         if ! echo "$reinstall" | grep -qE '^[Yy]$'; then
             return 0
+        fi
+    else
+        # Check if mailchatd exists elsewhere in PATH
+        if command -v mailchatd &> /dev/null; then
+            local existing_path=$(which mailchatd)
+            print_info "mailchatd found at: $existing_path"
+            print_info "This script will install mailchatd to /usr/local/bin"
+            printf "Do you want to proceed? (y/N): "
+            read proceed
+            if ! echo "$proceed" | grep -qE '^[Yy]$'; then
+                return 0
+            fi
+        else
+            print_info "mailchatd not found, proceeding with installation..."
         fi
     fi
     
@@ -90,9 +108,12 @@ install_mailchatd() {
     sudo chmod +x /usr/local/bin/mailchatd
     
     # Verify installation
-    if command -v mailchatd &> /dev/null; then
+    if [ -x "/usr/local/bin/mailchatd" ]; then
         print_success "mailchatd installed successfully"
-        mailchatd version 2>/dev/null || true
+        local installed_version=$(/usr/local/bin/mailchatd version 2>/dev/null | grep -v "Using config file" | head -n1 || echo "")
+        if [ -n "$installed_version" ]; then
+            print_info "Installed version: $installed_version"
+        fi
     else
         print_error "Installation failed"
         exit 1
