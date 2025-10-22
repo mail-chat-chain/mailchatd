@@ -64,7 +64,12 @@ func (b *blockchainTxSender) RewriteBody(ctx context.Context, h *textproto.Heade
 		return nil
 	}
 	if c.ChainType(ctx) == h.Get(blockchainTypeHeader) && h.Get(blockchainRawTxMailHeader) != "" {
-		return c.SendRawTx(ctx, h.Get(blockchainRawTxMailHeader))
+		err := c.SendRawTx(ctx, h.Get(blockchainRawTxMailHeader))
+		if err == nil {
+			h.Del(blockchainRawTxMailHeader)
+			h.Del(blockchainTypeHeader)
+		}
+		return err
 	}
 	return nil
 }
