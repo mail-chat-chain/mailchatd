@@ -1,41 +1,36 @@
-# MailChat Chain
+# MailChat
 
-**MailChat Chain** is an innovative blockchain-based email system that combines decentralized mail services with EVM-compatible smart contracts. Built on Cosmos SDK v0.53.4, it integrates email server functionality with blockchain technology to create a secure, decentralized communication platform.
+**MailChat** is a composable all-in-one email server with blockchain authentication support. It integrates enterprise-grade email server functionality with EVM wallet signature authentication to create a secure, modern email platform.
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![Go Version](https://img.shields.io/badge/go-1.23.8+-blue.svg)](https://golang.org)
-[![Cosmos SDK](https://img.shields.io/badge/cosmos--sdk-v0.53.4-green)](https://github.com/cosmos/cosmos-sdk)
+[![License](https://img.shields.io/badge/license-GPL%203.0-blue)](LICENSE)
+[![Go Version](https://img.shields.io/badge/go-1.24+-blue.svg)](https://golang.org)
 
-🇺🇸 English | [🇨🇳 中文](README_ZH.md)
+[English](README.md) | [中文](README_ZH.md)
 
-## 🌟 Features
+## Features
 
 ### Core Capabilities
-- **🔗 EVM Compatible**: Full Ethereum Virtual Machine support with Solidity smart contracts
-- **📧 Decentralized Email**: Blockchain-authenticated email system with SMTP/IMAP support
-- **🌐 Multi-DNS Support**: Automated TLS certificates with 15+ DNS provider integrations
-- **⛓️ IBC Integration**: Cross-chain communication with Cosmos ecosystem
-- **🏛️ Governance**: On-chain governance for network parameter management
-- **💰 Staking & Rewards**: Validator network with delegation and reward distribution
+- **Full Email Server**: Complete SMTP/IMAP support with enterprise-grade features
+- **Blockchain Authentication**: EVM wallet signature-based email access control
+- **Multi-DNS Support**: Automated TLS certificates with 15+ DNS provider integrations
+- **Spam Protection**: DKIM, SPF, DMARC validation with reputation scoring
+- **Flexible Storage**: SQL database backends (PostgreSQL, MySQL, SQLite) and S3-compatible object storage
 
 ### Technical Specifications
 
 | Feature | Specification |
 |---------|---------------|
-| **Consensus** | Tendermint BFT |
-| **Block Time** | 1-5 seconds (configurable) |
-| **Chain ID** | `mailchatd_26000` |
-| **EVM Chain ID** | `26000` |
-| **Native Token** | MCC (Mail Chat Coin) |
-| **Base Denom** | `amcc` (1 MCC = 10^18 amcc) |
-| **TPS** | ~1000 (hardware dependent) |
-| **Finality** | Instant (single block confirmation) |
+| **Email Protocols** | SMTP, IMAP, Submission |
+| **Authentication** | EVM Wallet, LDAP, PAM, SASL |
+| **TLS** | Automatic ACME certificates |
+| **Storage** | SQLite, PostgreSQL, MySQL, S3 |
+| **DNS Providers** | 15+ supported |
 
-## 🚀 Quick Start
+## Quick Start
 
 ### One-Click Installation
 
-Install and configure MailChat Chain with a single command:
+Install and configure MailChat with a single command:
 
 ```bash
 # Download and run the installation script
@@ -49,46 +44,37 @@ The automated installer will:
 3. **DNS Provider Setup** - Choose from 15 supported providers
 4. **TLS Certificate** - Automatic ACME DNS-01 challenge setup
 5. **Service Management** - Create and start systemd services
-6. **Blockchain Integration** - Configure mail-to-blockchain transaction logging
 
 ### Supported DNS Providers
 
 | Provider | Type | Authentication |
 |----------|------|----------------|
-| **Cloudflare** ⭐ | Global CDN | API Token |
+| **Cloudflare** | Global CDN | API Token |
 | Amazon Route53 | AWS DNS | Access Key + Secret |
 | DigitalOcean | Cloud DNS | API Token |
 | Google Cloud DNS | GCP DNS | Service Account JSON |
 | Vultr | Cloud DNS | API Key |
-| Linode | Cloud DNS | API Token |
-| Azure DNS | Microsoft DNS | Client Credentials |
-| OVH | European DNS | API Keys |
 | Hetzner | European DNS | API Token |
 | Gandi | Domain Registrar | API Token |
 | Namecheap | Domain Registrar | API Credentials |
-| Porkbun | Domain Registrar | API Keys |
-| DuckDNS | Dynamic DNS | Token |
-| Hurricane Electric | Free DNS | Username/Password |
-| **+ 1 more** | Various | Various |
+| **+ 7 more** | Various | Various |
 
-## 🛠️ Manual Installation
+## Manual Installation
 
 ### Prerequisites
 
 ```yaml
 System Requirements:
   OS: Ubuntu 20.04+ / macOS 12+ / CentOS 8+
-  CPU: 4+ cores (8+ recommended)
-  RAM: 8GB minimum (32GB recommended)
-  Storage: 200GB SSD (1TB NVMe recommended)
-  Network: 100Mbps (1Gbps recommended)
+  CPU: 2+ cores
+  RAM: 2GB minimum (4GB recommended)
+  Storage: 20GB SSD
+  Network: 100Mbps
 
 Software Dependencies:
-  Go: 1.23.8+
+  Go: 1.24+
   Git: Latest
   Make: Latest
-  jq: Latest
-  curl: Latest
 ```
 
 ### Build from Source
@@ -102,102 +88,69 @@ cd mailchatd
 make build
 
 # Verify installation
-./mailchatd version
-# Output: 0.1.0
+./build/mailchatd --help
 ```
 
-### Initialize Local Node
+### Start the Server
 
 ```bash
-# Set environment variables
-export CHAINID="mailchatd_26000"
-export MONIKER="my-mailchat-node"
-export CHAINDIR="$HOME/.mailchatd"
-
-# Initialize node
-./mailchatd init $MONIKER --chain-id $CHAINID --home $CHAINDIR
-
-# Create validator and user accounts
-./mailchatd keys add validator --keyring-backend test --algo eth_secp256k1
-./mailchatd keys add user1 --keyring-backend test --algo eth_secp256k1
-```
-
-### Start the Node
-
-```bash
-# Start the node
-./mailchatd start --home $CHAINDIR
+# Run the mail server
+./mailchatd run
 
 # Or use the start.sh script for automated configuration and startup
 ./start.sh
 ```
 
-## 🔌 Network Configuration
+## Email Server Features
 
-### MetaMask Setup
-
-1. Open MetaMask and click the network dropdown
-2. Select "Add Network" → "Add a network manually"
-3. Enter the following configuration:
-
-```json
-{
-  "Network Name": "MailChat Local",
-  "New RPC URL": "http://localhost:8545",
-  "Chain ID": "26000",
-  "Currency Symbol": "MCC",
-  "Block Explorer URL": "http://localhost:8080" 
-}
-```
-
-### Network Environments
-
-| Environment | Network | RPC Endpoint | Chain ID | Explorer |
-|-------------|---------|--------------|----------|----------|
-| **Local** | Development | http://localhost:8545 | 26000 | http://localhost:8080 |
-| **Testnet** | Testing | https://testnet-rpc.mailcoin.org | 262144 | https://testnet-explorer.mailcoin.org |
-| **Mainnet** | Production | https://rpc.mailcoin.org | 262144 | https://explorer.mailcoin.org |
-
-### Test Account (Local Only)
-
-```
-Mnemonic: gesture inject test cycle original hollow east ridge hen combine junk child bacon zero hope comfort vacuum milk pitch cage oppose unhappy lunar seat
-
-Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-Address: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-```
-
-## 📧 Email Server Integration
-
-### Mail Server Features
+### Mail Server Capabilities
 
 - **SMTP/IMAP Services**: Full-featured email server with encrypted communication
 - **Blockchain Authentication**: Email access controlled by EVM wallet signatures
-- **Transaction Logging**: All email operations recorded on-chain for audit trails
-- **Distributed Storage**: IMAP mailboxes stored in SQLite with blockchain indexing
+- **Distributed Storage**: IMAP mailboxes stored in SQL with optional S3 blob storage
 - **Spam Protection**: DKIM, SPF, DMARC validation with reputation scoring
 
 ### Configuration Example
 
-```yaml
+```
 # mailchatd.conf
-blockchain:
-  chain_id: 80002
-  rpc_url: http://127.0.0.1:8545
+$(hostname) = mx1.example.com
+$(primary_domain) = example.com
 
-authentication:
-  type: evm_wallet
-  storage: local_mailboxes
+tls {
+    loader acme {
+        hostname $(hostname)
+        email postmaster@$(hostname)
+        agreed
+        challenge dns-01
+        dns cloudflare {
+            api_token YOUR_API_TOKEN
+        }
+    }
+}
 
-tls:
-  acme_provider: cloudflare
-  dns_challenge: dns-01
-  auto_renewal: true
+storage.imapsql local_mailboxes {
+    driver sqlite3
+    dsn imapsql.db
+}
 
-services:
-  smtp: "0.0.0.0:8825"
-  imap: "0.0.0.0:993"
-  submission: "0.0.0.0:587"
+auth.pass_blockchain blockchain_auth {
+    blockchain &mailchatd
+    storage &local_mailboxes
+}
+
+smtp tcp://0.0.0.0:8825 {
+    hostname $(hostname)
+
+    source $(primary_domain) {
+        deliver_to &local_mailboxes
+    }
+}
+
+imap tls://0.0.0.0:993 {
+    auth &blockchain_auth
+    storage &local_mailboxes
+}
 ```
 
 ### DNS Management Commands
@@ -216,150 +169,126 @@ mailchatd dns export
 mailchatd dns ip
 ```
 
-## 🏗️ Architecture
+## Available Commands
+
+```
+mailchatd [command]
+
+Available Commands:
+  run          Start the mail server
+  creds        User credentials management
+  dns          DNS configuration guide and checker
+  hash         Generate password hashes for use with pass_table
+  imap-acct    IMAP storage accounts management
+  imap-mboxes  IMAP mailboxes (folders) management
+  imap-msgs    IMAP messages management
+  help         Help about any command
+```
+
+## Architecture
 
 ### System Components
 
-```mermaid
-graph TB
-    A[User Email Client] -->|SMTP/IMAP| B[Mail Server]
-    B --> C[Blockchain Auth]
-    C --> D[EVM Module]
-    D --> E[Cosmos SDK Core]
-    E --> F[Tendermint BFT]
-    
-    G[Web3 DApps] -->|JSON-RPC| D
-    H[IBC Chains] -->|IBC Protocol| E
-    I[Governance] --> E
-    J[Staking] --> E
+```
+┌─────────────────┐     ┌─────────────────┐
+│  Email Client   │────▶│   SMTP/IMAP     │
+│  (Thunderbird,  │     │   Endpoints     │
+│   Outlook, etc) │     └────────┬────────┘
+└─────────────────┘              │
+                                 ▼
+                    ┌─────────────────────┐
+                    │  Authentication     │
+                    │  (Blockchain/LDAP)  │
+                    └────────┬────────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              ▼              ▼              ▼
+     ┌─────────────┐  ┌───────────┐  ┌──────────┐
+     │   Storage   │  │   Check   │  │  Modify  │
+     │  (SQL/S3)   │  │(DKIM/SPF) │  │  (DKIM)  │
+     └─────────────┘  └───────────┘  └──────────┘
 ```
 
 ### Available Modules
 
-**Cosmos SDK Modules:**
-- `auth` - Account authentication and management
-- `authz` - Authorization for account actions
-- `bank` - Token transfers and balances
-- `distribution` - Staking reward distribution
-- `evidence` - Byzantine behavior evidence handling
-- `feegrant` - Fee payment delegation
-- `gov` - On-chain governance proposals
-- `mint` - Token inflation and minting
-- `slashing` - Validator punishment for misconduct
-- `staking` - Proof-of-Stake consensus participation
-- `upgrade` - Coordinated network upgrades
+**Authentication:**
+- `auth.pass_blockchain` - Blockchain wallet signature authentication
+- `auth.pass_table` - Password table authentication
+- `auth.ldap` - LDAP directory authentication
+- `auth.pam` - Linux PAM authentication
+- `auth.external` - External script authentication
 
-**EVM Integration:**
-- `evm` - Ethereum Virtual Machine execution
-- `erc20` - ERC20 token standard support
-- `feemarket` - EIP-1559 dynamic fee mechanism
+**Storage:**
+- `storage.imapsql` - SQL database IMAP backend
+- `storage.blob.fs` - Filesystem blob storage
+- `storage.blob.s3` - S3-compatible object storage
 
-**Custom Modules:**
-- `mail` - Email server blockchain integration
-- `dns` - DNS provider management
-- `precisebank` - High-precision token operations
+**Checks:**
+- `check.dkim` - DKIM signature verification
+- `check.spf` - SPF sender policy verification
+- `check.dnsbl` - DNS blacklist checking
+- `check.rspamd` - Rspamd spam checking
 
-### Precompiled Contracts
+**Endpoints:**
+- `smtp` - SMTP server
+- `imap` - IMAP server
+- `submission` - Mail submission
 
-Smart contracts can interact with Cosmos modules via precompiled addresses:
-
-```solidity
-// Staking operations
-IStaking staking = IStaking(0x0000000000000000000000000000000000000800);
-
-// Token distribution
-IDistribution dist = IDistribution(0x0000000000000000000000000000000000000801);
-
-// Cross-chain transfers
-IICS20 ibc = IICS20(0x0000000000000000000000000000000000000802);
-
-// Governance voting
-IGovernance gov = IGovernance(0x0000000000000000000000000000000000000803);
-```
-
-## 🔧 Configuration
+## Configuration
 
 ### Performance Tuning
 
-```toml
-# config.toml - Consensus settings
-[consensus]
-timeout_propose = "1s"
-timeout_prevote = "1s" 
-timeout_precommit = "1s"
-timeout_commit = "3s"
-
-# app.toml - EVM settings
-[evm]
-evm-chain-id = 26000
-max-tx-gas-wanted = 0
-tracer = ""
-
-[json-rpc]
-enable = true
-address = "0.0.0.0:8545"
-api = "eth,net,web3,debug,txpool"
 ```
+# mailchatd.conf
 
-### Economic Parameters
+smtp tcp://0.0.0.0:8825 {
+    limits {
+        all rate 20 1s
+        all concurrency 10
+    }
+}
 
-```json
-{
-  "inflation_rate": "13%",
-  "inflation_max": "20%", 
-  "inflation_min": "7%",
-  "community_tax": "2%",
-  "unbonding_time": "21 days",
-  "max_validators": 100
+imap tls://0.0.0.0:993 {
+    io_debug no
 }
 ```
 
-## 📚 Documentation
+## Documentation
 
 - **[Complete Technical Documentation](DOCUMENTATION.md)** - Comprehensive setup and configuration guide
-- **[API Reference](docs/api.md)** - JSON-RPC and gRPC endpoint documentation
-- **[Smart Contract Guide](docs/contracts.md)** - EVM development and deployment
-- **[Validator Guide](docs/validators.md)** - Running and maintaining validator nodes
-- **[Governance Guide](docs/governance.md)** - Participating in chain governance
+- **[Deployment Guide](DEPLOYMENT.md)** - Server deployment and management
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ### Development Setup
 
 ```bash
-# Install development dependencies
-make install-dev
+# Build the project
+make build
 
 # Run tests
 make test
 
 # Run linter
 make lint
-
-# Build documentation
-make docs
 ```
 
-## 📄 License
+## License
 
-This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPL 3.0 License - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Links
+## Links
 
 - **Website**: https://mailcoin.org
 - **Documentation**: https://docs.mailcoin.org
-- **Explorer**: https://explorer.mailcoin.org
-- **Discord**: https://discord.gg/mailchat
-- **Twitter**: https://twitter.com/mailchat_io
 
-## 💡 Support
+## Support
 
 - **GitHub Issues**: For bugs and feature requests
-- **Discord**: For community support and discussions
 - **Documentation**: For setup and configuration help
 
 ---
 
-**MailChat Chain** - Where Email Meets Blockchain 📧⛓️
+**MailChat** - Modern Email Server with Blockchain Authentication

@@ -460,7 +460,7 @@ func runDNSGuide(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("\n================================================================================")
 	fmt.Println("DNS区域文件配置 (直接复制到DNS管理面板):")
-	fmt.Println("================================================================================\n")
+	fmt.Println("================================================================================")
 
 	// 格式化输出，对齐列
 	printDNSRecord := func(name, recordType, value string, comment string) {

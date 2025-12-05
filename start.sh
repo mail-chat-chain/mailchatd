@@ -978,105 +978,34 @@ EOF
 # Create and start services
 start_services() {
     print_info "Starting to set up system services..."
-    
-    # Determine NODE_HOME value
-    local node_home
+
+    # Determine MAILCHAT_HOME value
+    local mailchat_home
     if [ -f "/etc/mailchatd/environment" ]; then
         # Read from environment file
-        node_home=$(grep "^NODE_HOME=" /etc/mailchatd/environment | cut -d= -f2)
+        mailchat_home=$(grep "^MAILCHAT_HOME=" /etc/mailchatd/environment | cut -d= -f2)
     fi
-    
+
     # If not in environment file, try to get from environment variable
-    if [ -z "$node_home" ]; then
-        node_home="${NODE_HOME}"
+    if [ -z "$mailchat_home" ]; then
+        mailchat_home="${MAILCHAT_HOME:-$NODE_HOME}"
     fi
-    
+
     # If still not available, ask user
-    if [ -z "$node_home" ]; then
-        read -p "Enter NODE_HOME path [default: /root/.mailchatd]: " node_home
-        node_home=${node_home:-/root/.mailchatd}
-        
+    if [ -z "$mailchat_home" ]; then
+        read -p "Enter MAILCHAT_HOME path [default: /root/.mailchatd]: " mailchat_home
+        mailchat_home=${mailchat_home:-/root/.mailchatd}
+
         # Save to environment file
         mkdir -p /etc/mailchatd
         cat > /etc/mailchatd/environment << EOF
-NODE_HOME=$node_home
+MAILCHAT_HOME=$mailchat_home
 EOF
-        print_success "NODE_HOME saved to /etc/mailchatd/environment"
+        print_success "MAILCHAT_HOME saved to /etc/mailchatd/environment"
     else
-        print_info "Using NODE_HOME: $node_home"
+        print_info "Using MAILCHAT_HOME: $mailchat_home"
     fi
-    
-    # Check and handle mailchatd.service
-    local create_mailchatd_service=false
-    
-    if [ -f "/etc/systemd/system/mailchatd.service" ]; then
-        print_info "Detected existing mailchatd.service"
-        read -p "Stop and recreate mailchatd.service? (y/N): " recreate_service
-        if echo "$recreate_service" | grep -qE '^[Yy]$'; then
-            print_info "Stopping mailchatd.service..."
-            sudo systemctl stop mailchatd.service 2>/dev/null || true
-            sudo systemctl disable mailchatd.service 2>/dev/null || true
-            sudo rm -f /etc/systemd/system/mailchatd.service
-            sudo systemctl daemon-reload
-            print_success "Old mailchatd.service removed"
-            create_mailchatd_service=true
-        else
-            print_info "Keeping existing mailchatd.service"
-        fi
-    else
-        create_mailchatd_service=true
-    fi
-    
-    # Create mailchatd.service
-    if [ "$create_mailchatd_service" = true ]; then
-        print_info "Creating mailchatd.service..."
-        
-        cat > /tmp/mailchatd.service << EOF
-[Unit]
-Description=MailChat Blockchain Node
-After=network-online.target
-Wants=network-online.target
 
-[Service]
-Type=simple
-User=root
-EnvironmentFile=/etc/mailchatd/environment
-ExecStart=/usr/local/bin/mailchatd start --log_level info
-Restart=always
-RestartSec=3
-LimitNOFILE=65535
-StandardOutput=journal
-StandardError=journal
-
-# Security restrictions
-PrivateTmp=false
-ProtectSystem=strict
-NoNewPrivileges=true
-
-[Install]
-WantedBy=multi-user.target
-EOF
-        
-        sudo mv /tmp/mailchatd.service /etc/systemd/system/
-        sudo systemctl daemon-reload
-        sudo systemctl enable mailchatd.service
-        print_success "mailchatd.service created successfully"
-    fi
-    
-    # Start mailchatd.service (if service file exists)
-    if [ -f "/etc/systemd/system/mailchatd.service" ]; then
-        print_info "Starting mailchatd.service..."
-        sudo systemctl restart mailchatd.service
-        if sudo systemctl is-active --quiet mailchatd.service; then
-            print_success "mailchatd.service started successfully"
-        else
-            print_error "mailchatd.service failed to start"
-            sudo systemctl status mailchatd.service --no-pager
-        fi
-    else
-        print_info "mailchatd.service does not exist, skipping startup"
-    fi
-    
     # Check and handle mailchatd-mail.service
     local create_mail_service=false
     
@@ -1105,7 +1034,7 @@ EOF
         cat > /tmp/mailchatd-mail.service << EOF
 [Unit]
 Description=MailChat Mail Service
-After=network-online.target mailchatd.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
@@ -1118,11 +1047,6 @@ RestartSec=3
 LimitNOFILE=65535
 StandardOutput=journal
 StandardError=journal
-
-# Security restrictions
-PrivateTmp=false
-ProtectSystem=strict
-NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target
@@ -1202,12 +1126,9 @@ main() {
             ;;
     esac
     
-    print_info "Current NODE_HOME: $NODE_HOME"
     print_info "View service status:"
-    print_info "  systemctl status mailchatd"
     print_info "  systemctl status mailchatd-mail"
     print_info "View logs:"
-    print_info "  journalctl -u mailchatd -f"
     print_info "  journalctl -u mailchatd-mail -f"
     print_info "Manually load environment variables (if needed):"
     print_info "  source /etc/profile.d/mailchatd.sh"
