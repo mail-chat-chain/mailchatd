@@ -1225,48 +1225,57 @@ func isValidEmail(email string) bool {
 
 func exportStandardZoneFormat(cfg *DNSConfig) {
 	fmt.Println("\n; ================================================================================")
-	fmt.Printf("; DNS Zone Records for %s\n", cfg.PrimaryDomain)
-	fmt.Printf("; Mail Server: %s\n", cfg.Hostname)
+	fmt.Printf("; Mail Server DNS Records for %s\n", cfg.PrimaryDomain)
+	fmt.Printf("; Mail Server: %s (%s)\n", cfg.Hostname, cfg.ServerIP)
 	fmt.Printf("; Generated: %s\n", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Println(";")
+	fmt.Println("; IMPORTANT: This file only contains mail-related records.")
+	fmt.Printf("; Do NOT add %s A/AAAA record if your domain already has a website.\n", cfg.PrimaryDomain)
 	fmt.Println("; ================================================================================")
 	fmt.Println()
-	
-	// 基础记录
-	fmt.Printf("%-40s IN  A      %s\n", cfg.PrimaryDomain+".", cfg.ServerIP)
-	if cfg.ServerIPv6 != "" {
-		fmt.Printf("%-40s IN  AAAA   %s\n", cfg.PrimaryDomain+".", cfg.ServerIPv6)
-	}
+
+	// A Records - Only mail server, not primary domain
+	fmt.Println("; A Records (Mail Server)")
 	fmt.Printf("%-40s IN  A      %s\n", cfg.Hostname+".", cfg.ServerIP)
 	if cfg.ServerIPv6 != "" {
 		fmt.Printf("%-40s IN  AAAA   %s\n", cfg.Hostname+".", cfg.ServerIPv6)
 	}
-	
-	// MX记录
+	fmt.Println()
+
+	// MX Records
+	fmt.Println("; MX Records")
 	fmt.Printf("%-40s IN  MX     10 %s.\n", cfg.PrimaryDomain+".", cfg.Hostname)
-	
-	// TXT记录
+	fmt.Println()
+
+	// SPF Records
+	fmt.Println("; TXT Records (SPF)")
 	fmt.Printf("%-40s IN  TXT    \"v=spf1 mx ~all\"\n", cfg.PrimaryDomain+".")
 	fmt.Printf("%-40s IN  TXT    \"v=spf1 a ~all\"\n", cfg.Hostname+".")
-	
-	// DKIM
+	fmt.Println()
+
+	// DKIM Records
+	fmt.Println("; TXT Records (DKIM)")
 	dkimHost := fmt.Sprintf("default._domainkey.%s.", cfg.PrimaryDomain)
 	fmt.Printf("%-40s IN  TXT    \"%s\"\n", dkimHost, cfg.DKIMPublicKey)
-	
-	// DMARC
+	fmt.Println()
+
+	// DMARC Records
+	fmt.Println("; TXT Records (DMARC)")
 	dmarcHost := fmt.Sprintf("_dmarc.%s.", cfg.PrimaryDomain)
 	dmarcPolicy := cfg.DMARCPolicy
 	if dmarcPolicy == "" {
 		dmarcPolicy = "quarantine"
 	}
 	fmt.Printf("%-40s IN  TXT    \"v=DMARC1; p=%s; ruf=mailto:%s\"\n", dmarcHost, dmarcPolicy, cfg.PostmasterEmail)
-	
-	// MTA-STS和TLSRPT
+	fmt.Println()
+
+	// MTA-STS and TLSRPT Records
+	fmt.Println("; TXT Records (MTA-STS & TLSRPT)")
 	mtastsHost := fmt.Sprintf("_mta-sts.%s.", cfg.PrimaryDomain)
 	fmt.Printf("%-40s IN  TXT    \"v=STSv1; id=1\"\n", mtastsHost)
-	
 	tlsrptHost := fmt.Sprintf("_smtp._tls.%s.", cfg.PrimaryDomain)
 	fmt.Printf("%-40s IN  TXT    \"v=TLSRPTv1; rua=mailto:%s\"\n", tlsrptHost, cfg.PostmasterEmail)
-	
+
 	fmt.Println("\n; ================================================================================")
 }
 
@@ -1307,27 +1316,49 @@ func exportBINDFormat(cfg *DNSConfig) {
 }
 
 func exportCloudFlareFormat(cfg *DNSConfig) {
-	fmt.Println("\n# CloudFlare CSV Format")
-	fmt.Println("# Type,Name,Content,TTL,Priority")
-	fmt.Printf("A,%s,%s,3600,\n", cfg.PrimaryDomain, cfg.ServerIP)
+	fmt.Println(";;")
+	fmt.Printf(";; Domain:     %s\n", cfg.PrimaryDomain)
+	fmt.Printf(";; Exported:   %s\n", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Println(";;")
+	fmt.Println(";; This file is intended for use for import into Cloudflare's DNS service.  If you are")
+	fmt.Println(";; having trouble importing this file, please reach out to support.")
+	fmt.Println(";;")
+	fmt.Println()
+
+	// A Records - Only mail server
+	fmt.Println(";; A Records")
+	fmt.Printf("%s.\t1\tIN\tA\t%s\n", cfg.Hostname, cfg.ServerIP)
 	if cfg.ServerIPv6 != "" {
-		fmt.Printf("AAAA,%s,%s,3600,\n", cfg.PrimaryDomain, cfg.ServerIPv6)
+		fmt.Printf("%s.\t1\tIN\tAAAA\t%s\n", cfg.Hostname, cfg.ServerIPv6)
 	}
-	fmt.Printf("A,%s,%s,3600,\n", cfg.Hostname, cfg.ServerIP)
-	if cfg.ServerIPv6 != "" {
-		fmt.Printf("AAAA,%s,%s,3600,\n", cfg.Hostname, cfg.ServerIPv6)
-	}
-	fmt.Printf("MX,%s,%s,3600,10\n", cfg.PrimaryDomain, cfg.Hostname)
-	fmt.Printf("TXT,%s,\"v=spf1 mx ~all\",3600,\n", cfg.PrimaryDomain)
-	fmt.Printf("TXT,%s,\"v=spf1 a ~all\",3600,\n", cfg.Hostname)
-	fmt.Printf("TXT,default._domainkey.%s,\"%s\",3600,\n", cfg.PrimaryDomain, cfg.DKIMPublicKey)
+	fmt.Println()
+
+	// MX Records
+	fmt.Println(";; MX Records")
+	fmt.Printf("%s.\t1\tIN\tMX\t10 %s.\n", cfg.PrimaryDomain, cfg.Hostname)
+	fmt.Println()
+
+	// TXT Records - All in one section
+	fmt.Println(";; TXT Records")
+	// DKIM
+	fmt.Printf("default._domainkey.%s.\t1\tIN\tTXT\t\"%s\"\n", cfg.PrimaryDomain, cfg.DKIMPublicKey)
+	// SPF
+	fmt.Printf("%s.\t1\tIN\tTXT\t\"v=spf1 mx ~all\"\n", cfg.PrimaryDomain)
+	fmt.Printf("%s.\t1\tIN\tTXT\t\"v=spf1 a ~all\"\n", cfg.Hostname)
+	// DMARC
 	dmarcPolicy := cfg.DMARCPolicy
 	if dmarcPolicy == "" {
 		dmarcPolicy = "quarantine"
 	}
-	fmt.Printf("TXT,_dmarc.%s,\"v=DMARC1; p=%s; ruf=mailto:%s\",3600,\n", cfg.PrimaryDomain, dmarcPolicy, cfg.PostmasterEmail)
-	fmt.Printf("TXT,_mta-sts.%s,\"v=STSv1; id=1\",3600,\n", cfg.PrimaryDomain)
-	fmt.Printf("TXT,_smtp._tls.%s,\"v=TLSRPTv1; rua=mailto:%s\",3600,\n", cfg.PrimaryDomain, cfg.PostmasterEmail)
+	fmt.Printf("_dmarc.%s.\t1\tIN\tTXT\t\"v=DMARC1; p=%s; ruf=mailto:%s\"\n", cfg.PrimaryDomain, dmarcPolicy, cfg.PostmasterEmail)
+	// MTA-STS and TLSRPT
+	fmt.Printf("_mta-sts.%s.\t1\tIN\tTXT\t\"v=STSv1; id=1\"\n", cfg.PrimaryDomain)
+	fmt.Printf("_smtp._tls.%s.\t1\tIN\tTXT\t\"v=TLSRPTv1; rua=mailto:%s\"\n", cfg.PrimaryDomain, cfg.PostmasterEmail)
+	fmt.Println()
+
+	// Print reminder after the records
+	fmt.Println(";; IMPORTANT: After import, edit the A record for the mail server")
+	fmt.Println(";; and DISABLE the Cloudflare proxy (change orange cloud to grey).")
 }
 
 func exportGenericFormat(cfg *DNSConfig) {

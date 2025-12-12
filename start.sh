@@ -1068,5 +1068,10 @@ main() {
     print_info "  source /etc/profile.d/mailchatd.sh"
 }
 
+# Ensure stdin is from terminal when running via pipe
+if [ ! -t 0 ]; then
+    exec < /dev/tty
+fi
+
 # Run main function
 main "$@"
