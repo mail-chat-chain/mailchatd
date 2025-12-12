@@ -90,7 +90,7 @@ install_mailchatd() {
     
     # Get system architecture
     local system_arch=$(get_system_arch)
-    local download_url="https://download.mailcoin.org/mailchatd-${system_arch}-v0.2.3"
+    local download_url="https://download.mailcoin.org/mailchatd-${system_arch}-v0.3.1"
     
     print_info "System architecture: $system_arch"
     print_info "Download URL: $download_url"
@@ -577,64 +577,64 @@ configure_mailchatd() {
     print_info "Starting mailchatd configuration..."
     
     # 1. Ask for working directory path
-    # Check if NODE_HOME is already set
-    if [ -n "$NODE_HOME" ]; then
-        print_info "Detected existing NODE_HOME: $NODE_HOME"
-        read -p "Enter working directory path [default: $NODE_HOME]: " work_dir
-        work_dir=${work_dir:-$NODE_HOME}
+    # Check if MAILCHAT_HOME is already set
+    if [ -n "$MAILCHAT_HOME" ]; then
+        print_info "Detected existing MAILCHAT_HOME: $MAILCHAT_HOME"
+        read -p "Enter working directory path [default: $MAILCHAT_HOME]: " work_dir
+        work_dir=${work_dir:-$MAILCHAT_HOME}
     else
         read -p "Enter working directory path [default: /root/.mailchatd]: " work_dir
         work_dir=${work_dir:-/root/.mailchatd}
     fi
     
-    # Set and export NODE_HOME immediately
-    export NODE_HOME="$work_dir"
+    # Set and export MAILCHAT_HOME immediately
+    export MAILCHAT_HOME="$work_dir"
     print_info "Working directory: $work_dir"
-    print_success "NODE_HOME set to: $NODE_HOME"
-    
-    # Permanently save NODE_HOME environment variable
-    print_info "Permanently saving NODE_HOME environment variable..."
+    print_success "MAILCHAT_HOME set to: $MAILCHAT_HOME"
+
+    # Permanently save MAILCHAT_HOME environment variable
+    print_info "Permanently saving MAILCHAT_HOME environment variable..."
     
     # Detect shell type
     if [ -n "$BASH_VERSION" ]; then
         # Bash shell
         if [ -f "$HOME/.bashrc" ]; then
-            # Check if NODE_HOME setting already exists
-            if ! grep -q "export NODE_HOME=" "$HOME/.bashrc"; then
+            # Check if MAILCHAT_HOME setting already exists
+            if ! grep -q "export MAILCHAT_HOME=" "$HOME/.bashrc"; then
                 echo "" >> "$HOME/.bashrc"
-                echo "# MailChat Node Home Directory" >> "$HOME/.bashrc"
-                echo "export NODE_HOME=\"$work_dir\"" >> "$HOME/.bashrc"
-                print_success "NODE_HOME added to ~/.bashrc"
+                echo "# MailChat Home Directory" >> "$HOME/.bashrc"
+                echo "export MAILCHAT_HOME=\"$work_dir\"" >> "$HOME/.bashrc"
+                print_success "MAILCHAT_HOME added to ~/.bashrc"
             else
-                # Update existing NODE_HOME
-                sed -i.bak "s|export NODE_HOME=.*|export NODE_HOME=\"$work_dir\"|" "$HOME/.bashrc"
-                print_success "Updated NODE_HOME in ~/.bashrc"
+                # Update existing MAILCHAT_HOME
+                sed -i.bak "s|export MAILCHAT_HOME=.*|export MAILCHAT_HOME=\"$work_dir\"|" "$HOME/.bashrc"
+                print_success "Updated MAILCHAT_HOME in ~/.bashrc"
             fi
         fi
-        
+
         # Also update .profile for compatibility
         if [ -f "$HOME/.profile" ]; then
-            if ! grep -q "export NODE_HOME=" "$HOME/.profile"; then
+            if ! grep -q "export MAILCHAT_HOME=" "$HOME/.profile"; then
                 echo "" >> "$HOME/.profile"
-                echo "# MailChat Node Home Directory" >> "$HOME/.profile"
-                echo "export NODE_HOME=\"$work_dir\"" >> "$HOME/.profile"
-                print_success "NODE_HOME added to ~/.profile"
+                echo "# MailChat Home Directory" >> "$HOME/.profile"
+                echo "export MAILCHAT_HOME=\"$work_dir\"" >> "$HOME/.profile"
+                print_success "MAILCHAT_HOME added to ~/.profile"
             else
-                sed -i.bak "s|export NODE_HOME=.*|export NODE_HOME=\"$work_dir\"|" "$HOME/.profile"
-                print_success "Updated NODE_HOME in ~/.profile"
+                sed -i.bak "s|export MAILCHAT_HOME=.*|export MAILCHAT_HOME=\"$work_dir\"|" "$HOME/.profile"
+                print_success "Updated MAILCHAT_HOME in ~/.profile"
             fi
         fi
     else
         # POSIX sh
         if [ -f "$HOME/.profile" ]; then
-            if ! grep -q "export NODE_HOME=" "$HOME/.profile"; then
+            if ! grep -q "export MAILCHAT_HOME=" "$HOME/.profile"; then
                 echo "" >> "$HOME/.profile"
-                echo "# MailChat Node Home Directory" >> "$HOME/.profile"
-                echo "export NODE_HOME=\"$work_dir\"" >> "$HOME/.profile"
-                print_success "NODE_HOME added to ~/.profile"
+                echo "# MailChat Home Directory" >> "$HOME/.profile"
+                echo "export MAILCHAT_HOME=\"$work_dir\"" >> "$HOME/.profile"
+                print_success "MAILCHAT_HOME added to ~/.profile"
             else
-                sed -i.bak "s|export NODE_HOME=.*|export NODE_HOME=\"$work_dir\"|" "$HOME/.profile"
-                print_success "Updated NODE_HOME in ~/.profile"
+                sed -i.bak "s|export MAILCHAT_HOME=.*|export MAILCHAT_HOME=\"$work_dir\"|" "$HOME/.profile"
+                print_success "Updated MAILCHAT_HOME in ~/.profile"
             fi
         fi
     fi
@@ -644,74 +644,50 @@ configure_mailchatd() {
         # Create system-level environment variable file
         if [ -d "/etc/profile.d" ]; then
             cat > /etc/profile.d/mailchatd.sh << EOF
-# MailChat Node Environment Variables
-export NODE_HOME="$work_dir"
+# MailChat Environment Variables
+export MAILCHAT_HOME="$work_dir"
 EOF
             chmod 644 /etc/profile.d/mailchatd.sh
             print_success "Created system-level environment file /etc/profile.d/mailchatd.sh"
         fi
-        
+
         # For systemd services, create or update environment file
         mkdir -p /etc/mailchatd
         cat > /etc/mailchatd/environment << EOF
-NODE_HOME=$work_dir
+MAILCHAT_HOME=$work_dir
 EOF
         print_success "Created systemd environment file /etc/mailchatd/environment"
-        
+
         # Add to /etc/environment for system-wide availability
         if [ -f "/etc/environment" ]; then
-            # Check if NODE_HOME already exists
-            if grep -q "^NODE_HOME=" "/etc/environment"; then
-                # Update existing NODE_HOME
-                sed -i.bak "s|^NODE_HOME=.*|NODE_HOME=\"$work_dir\"|" "/etc/environment"
-                print_success "Updated NODE_HOME in /etc/environment"
+            # Check if MAILCHAT_HOME already exists
+            if grep -q "^MAILCHAT_HOME=" "/etc/environment"; then
+                # Update existing MAILCHAT_HOME
+                sed -i.bak "s|^MAILCHAT_HOME=.*|MAILCHAT_HOME=\"$work_dir\"|" "/etc/environment"
+                print_success "Updated MAILCHAT_HOME in /etc/environment"
             else
-                # Add new NODE_HOME
-                echo "NODE_HOME=\"$work_dir\"" >> "/etc/environment"
-                print_success "NODE_HOME added to /etc/environment"
+                # Add new MAILCHAT_HOME
+                echo "MAILCHAT_HOME=\"$work_dir\"" >> "/etc/environment"
+                print_success "MAILCHAT_HOME added to /etc/environment"
             fi
         fi
     else
         print_info "Root permission required to set system-level environment variables"
         print_info "Please run script with sudo to permanently save environment variables"
     fi
-    
+
     # Load environment variables immediately (for current script session)
     if [ -f "/etc/profile.d/mailchatd.sh" ]; then
         . /etc/profile.d/mailchatd.sh
     fi
-    
-    print_success "NODE_HOME environment variable set and effective immediately: $NODE_HOME"
+
+    print_success "MAILCHAT_HOME environment variable set and effective immediately: $MAILCHAT_HOME"
     print_info "Environment variables permanently saved, new terminal sessions will load automatically"
-    
-    # Initialize node
-    print_info "Initializing node..."
-    print_info "Using NODE_HOME=$NODE_HOME"
-    
-    if [ -d "$work_dir/config" ]; then
-        print_info "Node configuration directory already exists"
-        read -p "Do you want to reinitialize the node? (y/N): " reinit
-        if echo "$reinit" | grep -qE '^[Yy]$'; then
-            # Backup existing configuration
-            if [ -f "$work_dir/config/genesis.json" ]; then
-                mv "$work_dir/config/genesis.json" "$work_dir/config/genesis.json.bak"
-                print_info "Backed up existing genesis.json"
-            fi
-            if [ -f "$work_dir/config/config.toml" ]; then
-                mv "$work_dir/config/config.toml" "$work_dir/config/config.toml.bak"
-                print_info "Backed up existing config.toml"
-            fi
-            NODE_HOME="$work_dir" mailchatd init localnode
-            print_success "Node reinitialization completed"
-        else
-            print_info "Skipping node initialization"
-        fi
-    else
-        NODE_HOME="$work_dir" mailchatd init localnode
-        print_success "Node initialization completed"
-    fi
-    
-    # Copy default mailchatd.conf file (if it doesn't exist)
+
+    # Ensure working directory exists
+    mkdir -p "$work_dir"
+
+    # Create default mailchatd.conf file (if it doesn't exist)
     if [ ! -f "$work_dir/mailchatd.conf" ]; then
         print_info "Creating default configuration file..."
         # Try to copy from precompiles directory
@@ -729,47 +705,15 @@ EOF
         fi
         print_success "Default configuration file created successfully"
     fi
-    
-    # 2. Download configuration files
-    print_info "Downloading configuration files..."
-    
-    # Ensure configuration directory exists
-    mkdir -p "$work_dir/config"
-    
-    # Download genesis.json (always overwrite, as official genesis block is needed)
-    print_info "Downloading official genesis.json..."
-    if [ -f "$work_dir/config/genesis.json" ]; then
-        mv "$work_dir/config/genesis.json" "$work_dir/config/genesis.json.old"
-        print_info "Backed up original genesis.json as genesis.json.old"
-    fi
-    if curl -L -o "$work_dir/config/genesis.json" "https://download.mailcoin.org/genesis.json"; then
-        print_success "genesis.json downloaded successfully"
-    else
-        print_error "genesis.json download failed"
-        exit 1
-    fi
-    
-    # Download config.toml (always overwrite, as official configuration is needed)
-    print_info "Downloading official config.toml..."
-    if [ -f "$work_dir/config/config.toml" ]; then
-        mv "$work_dir/config/config.toml" "$work_dir/config/config.toml.old"
-        print_info "Backed up original config.toml as config.toml.old"
-    fi
-    if curl -L -o "$work_dir/config/config.toml" "https://download.mailcoin.org/config.toml"; then
-        print_success "config.toml downloaded successfully"
-    else
-        print_error "config.toml download failed"
-        exit 1
-    fi
-    
-    # 3. Ask for email domain
+
+    # 2. Ask for email domain
     read -p "Enter email domain: " email_domain
     while [ -z "$email_domain" ]; do
         print_error "Email domain cannot be empty"
         read -p "Enter email domain: " email_domain
     done
     
-    # 4. Ask for public IP
+    # 3. Ask for public IP
     local detected_ip=$(get_public_ip)
     if [ -n "$detected_ip" ]; then
         read -p "Enter public IP [default: $detected_ip]: " public_ip
@@ -782,7 +726,7 @@ EOF
         done
     fi
     
-    # 5. Ask for DNS provider with comprehensive options
+    # 4. Ask for DNS provider with comprehensive options
     echo ""
     echo "==============================================="
     echo "DNS Provider Selection"
@@ -895,10 +839,10 @@ EOF
     print_info "Selected DNS provider: $dns_display_name"
     echo ""
     
-    # 6. Collect DNS provider credentials based on selection
+    # 5. Collect DNS provider credentials based on selection
     collect_dns_credentials "$dns_provider"
     
-    # 7. Modify mailchatd.conf
+    # 6. Modify mailchatd.conf
     local config_file="$work_dir/mailchatd.conf"
     
     print_info "Updating configuration file..."
@@ -960,17 +904,17 @@ EOF
     
     print_success "Configuration file update completed"
     
-    # 8. Check DNS settings
+    # 7. Check DNS settings
     print_info "Checking DNS settings..."
-    if NODE_HOME="$work_dir" mailchatd dns check; then
+    if MAILCHAT_HOME="$work_dir" mailchatd dns check; then
         print_success "DNS settings check passed"
     else
         print_error "DNS settings check failed, please check configuration"
     fi
-    
-    # 9. Export DNS configuration information
+
+    # 8. Export DNS configuration information
     print_info "Exporting DNS configuration information..."
-    NODE_HOME="$work_dir" mailchatd dns export
+    MAILCHAT_HOME="$work_dir" mailchatd dns export
     
     print_success "Configuration completed"
 }
@@ -988,7 +932,7 @@ start_services() {
 
     # If not in environment file, try to get from environment variable
     if [ -z "$mailchat_home" ]; then
-        mailchat_home="${MAILCHAT_HOME:-$NODE_HOME}"
+        mailchat_home="${MAILCHAT_HOME}"
     fi
 
     # If still not available, ask user
@@ -1006,32 +950,32 @@ EOF
         print_info "Using MAILCHAT_HOME: $mailchat_home"
     fi
 
-    # Check and handle mailchatd-mail.service
+    # Check and handle mailchatd.service
     local create_mail_service=false
     
-    if [ -f "/etc/systemd/system/mailchatd-mail.service" ]; then
-        print_info "Detected existing mailchatd-mail.service"
-        read -p "Stop and recreate mailchatd-mail.service? (y/N): " recreate_mail_service
+    if [ -f "/etc/systemd/system/mailchatd.service" ]; then
+        print_info "Detected existing mailchatd.service"
+        read -p "Stop and recreate mailchatd.service? (y/N): " recreate_mail_service
         if echo "$recreate_mail_service" | grep -qE '^[Yy]$'; then
-            print_info "Stopping mailchatd-mail.service..."
-            sudo systemctl stop mailchatd-mail.service 2>/dev/null || true
-            sudo systemctl disable mailchatd-mail.service 2>/dev/null || true
-            sudo rm -f /etc/systemd/system/mailchatd-mail.service
+            print_info "Stopping mailchatd.service..."
+            sudo systemctl stop mailchatd.service 2>/dev/null || true
+            sudo systemctl disable mailchatd.service 2>/dev/null || true
+            sudo rm -f /etc/systemd/system/mailchatd.service
             sudo systemctl daemon-reload
-            print_success "Old mailchatd-mail.service removed"
+            print_success "Old mailchatd.service removed"
             create_mail_service=true
         else
-            print_info "Keeping existing mailchatd-mail.service"
+            print_info "Keeping existing mailchatd.service"
         fi
     else
         create_mail_service=true
     fi
     
-    # Create mailchatd-mail.service
+    # Create mailchatd.service
     if [ "$create_mail_service" = true ]; then
-        print_info "Creating mailchatd-mail.service..."
+        print_info "Creating mailchatd.service..."
         
-        cat > /tmp/mailchatd-mail.service << EOF
+        cat > /tmp/mailchatd.service << EOF
 [Unit]
 Description=MailChat Mail Service
 After=network-online.target
@@ -1052,24 +996,24 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
         
-        sudo mv /tmp/mailchatd-mail.service /etc/systemd/system/
+        sudo mv /tmp/mailchatd.service /etc/systemd/system/
         sudo systemctl daemon-reload
-        sudo systemctl enable mailchatd-mail.service
-        print_success "mailchatd-mail.service created successfully"
+        sudo systemctl enable mailchatd.service
+        print_success "mailchatd.service created successfully"
     fi
     
-    # Start mailchatd-mail.service (if service file exists)
-    if [ -f "/etc/systemd/system/mailchatd-mail.service" ]; then
-        print_info "Starting mailchatd-mail.service..."
-        sudo systemctl restart mailchatd-mail.service
-        if sudo systemctl is-active --quiet mailchatd-mail.service; then
-            print_success "mailchatd-mail.service started successfully"
+    # Start mailchatd.service (if service file exists)
+    if [ -f "/etc/systemd/system/mailchatd.service" ]; then
+        print_info "Starting mailchatd.service..."
+        sudo systemctl restart mailchatd.service
+        if sudo systemctl is-active --quiet mailchatd.service; then
+            print_success "mailchatd.service started successfully"
         else
-            print_error "mailchatd-mail.service failed to start"
-            sudo systemctl status mailchatd-mail.service --no-pager
+            print_error "mailchatd.service failed to start"
+            sudo systemctl status mailchatd.service --no-pager
         fi
     else
-        print_info "mailchatd-mail.service does not exist, skipping startup"
+        print_info "mailchatd.service does not exist, skipping startup"
     fi
     
     print_success "All services have been set up and started"
@@ -1127,9 +1071,9 @@ main() {
     esac
     
     print_info "View service status:"
-    print_info "  systemctl status mailchatd-mail"
+    print_info "  systemctl status mailchatd"
     print_info "View logs:"
-    print_info "  journalctl -u mailchatd-mail -f"
+    print_info "  journalctl -u mailchatd -f"
     print_info "Manually load environment variables (if needed):"
     print_info "  source /etc/profile.d/mailchatd.sh"
 }

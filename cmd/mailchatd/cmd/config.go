@@ -127,26 +127,6 @@ func reinitLogging() {
 
 // generateMailConfigContent generates the default mailchatd.conf content from project template
 func generateMailConfigContent() string {
-	// Try to find the template file by searching from current directory upwards
-	// currentDir, err := os.Getwd()
-	// if err == nil {
-	// 	// Look for mailchatd.conf in current directory and parent directories
-	// 	searchDir := currentDir
-	// 	for i := 0; i < 5; i++ { // Search up to 5 levels up
-	// 		templatePath := filepath.Join(searchDir, "mailchatd.conf")
-	// 		if content, err := os.ReadFile(templatePath); err == nil {
-	// 			// Successfully read the template file
-	// 			return string(content)
-	// 		}
-	// 		parentDir := filepath.Dir(searchDir)
-	// 		if parentDir == searchDir {
-	// 			break // Reached root directory
-	// 		}
-	// 		searchDir = parentDir
-	// 	}
-	// }
-	
-	// Fallback to embedded content if template file is not found
 	return `## MailChat - default configuration file (2022-06-18)
 # Suitable for small-scale deployments. Uses its own format for local users DB,
 # should be managed via mailchatd subcommands.
@@ -177,9 +157,13 @@ tls {
 
 # ----------------------------------------------------------------------------
 # blockchains
-blockchain.ethereum mailchatd {
-    chain_id 80002
-    rpc_url http://127.0.0.1:8545
+# blockchain.ethereum mailchatd {
+#     chain_id 26000
+#     rpc_url http://127.0.0.1:8545
+# }
+blockchain.ethereum bsc {
+    chain_id 56
+    rpc_url https://binance.llamarpc.com
 }
 
 # ----------------------------------------------------------------------------
@@ -217,7 +201,7 @@ storage.imapsql local_mailboxes {
 
 # pass blockchain module provides authentication using blockchain wallets.
 auth.pass_evm blockchain_atuh {
-    blockchain &mailchatd
+    blockchain &bsc
     storage &local_mailboxes
 }
 
@@ -244,7 +228,7 @@ msgpipeline local_routing {
     destination postmaster $(local_domains) {
         modify {
             replace_rcpt &local_rewrites
-            blockchain_tx &mailchatd
+            blockchain_tx &bsc
         }
 
         deliver_to &local_mailboxes
@@ -299,7 +283,7 @@ submission tls://0.0.0.0:465 tcp://0.0.0.0:587 {
         }
 
         modify {
-            blockchain_tx &mailchatd
+            blockchain_tx &bsc
         }
 
         destination postmaster $(local_domains) {
@@ -318,7 +302,8 @@ submission tls://0.0.0.0:465 tcp://0.0.0.0:587 {
 }
 
 target.remote outbound_delivery {
-    smtp_port 8825
+    # Set outbound SMTP connection port (default is 25)
+    smtp_port 8825    # Set to 8825
     limits {
         # Up to 20 msgs/sec across max. 10 SMTP connections
         # for each recipient domain.
@@ -366,11 +351,10 @@ imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
 `
 }
 
-
 // ReadPassword prompts the user for a password with hidden input
 func ReadPassword(prompt string) (string, error) {
 	fmt.Fprintf(os.Stderr, "%s: ", prompt)
-	
+
 	// Check if stdin is a terminal
 	if !term.IsTerminal(int(syscall.Stdin)) {
 		// If not a terminal, read plaintext (for scripts/tests)
@@ -383,10 +367,10 @@ func ReadPassword(prompt string) (string, error) {
 	// Read password with hidden input
 	password, err := term.ReadPassword(int(syscall.Stdin))
 	fmt.Fprintln(os.Stderr) // Print newline after password input
-	
+
 	if err != nil {
 		return "", err
 	}
-	
+
 	return string(password), nil
 }

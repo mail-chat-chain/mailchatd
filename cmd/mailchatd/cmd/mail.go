@@ -193,6 +193,28 @@ func RunCobra(cmd *cobra.Command, args []string, showVersion bool, logTargets []
 	os.Setenv("PATH", config.LibexecDirectory+string(filepath.ListSeparator)+os.Getenv("PATH"))
 
 	log.Printf("Starting MailChat %s \n", Version)
+
+	// Check if config file exists, create default if not
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		log.Printf("Config file not found: %s, creating default configuration...\n", configPath)
+
+		// Ensure config directory exists
+		configDir := filepath.Dir(configPath)
+		if err := os.MkdirAll(configDir, 0o755); err != nil {
+			systemdStatusErr(err)
+			return fmt.Errorf("failed to create config directory: %s", err.Error())
+		}
+
+		// Write default config file
+		defaultConfig := generateMailConfigContent()
+		if err := os.WriteFile(configPath, []byte(defaultConfig), 0o644); err != nil {
+			systemdStatusErr(err)
+			return fmt.Errorf("failed to create default config file: %s", err.Error())
+		}
+		log.Printf("Default configuration file created: %s\n", configPath)
+		log.Printf("Please edit the configuration file and restart the server.\n")
+	}
+
 	f, err := os.Open(configPath)
 	if err != nil {
 		systemdStatusErr(err)

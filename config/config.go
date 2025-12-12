@@ -9,7 +9,7 @@ const (
 	// AppName defines the name of the application.
 	AppName = "mailchatd"
 	// Version defines the version of the application.
-	Version = "0.2.3"
+	Version = "0.3.1"
 )
 
 // MustGetDefaultNodeHome returns the default node home directory.
