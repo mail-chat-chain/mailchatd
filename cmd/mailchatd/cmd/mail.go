@@ -141,6 +141,7 @@ func addMailCommands(rootCmd *cobra.Command) {
 
 	rootCmd.AddCommand(
 		runCmd,
+		NewInitCmd(),
 		NewCredsCmd(),
 		NewHashCmd(),
 		NewImapAcctCmd(),

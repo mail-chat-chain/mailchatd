@@ -684,26 +684,16 @@ EOF
     print_success "MAILCHAT_HOME environment variable set and effective immediately: $MAILCHAT_HOME"
     print_info "Environment variables permanently saved, new terminal sessions will load automatically"
 
-    # Ensure working directory exists
-    mkdir -p "$work_dir"
-
-    # Create default mailchatd.conf file (if it doesn't exist)
-    if [ ! -f "$work_dir/mailchatd.conf" ]; then
-        print_info "Creating default configuration file..."
-        # Try to copy from precompiles directory
-        if [ -f "./precompiles/mailchatd.conf" ]; then
-            cp "./precompiles/mailchatd.conf" "$work_dir/mailchatd.conf"
-        elif [ -f "/usr/share/mailchatd/mailchatd.conf" ]; then
-            cp "/usr/share/mailchatd/mailchatd.conf" "$work_dir/mailchatd.conf"
-        else
-            # Download default configuration file
-            print_info "Downloading default mailchatd.conf..."
-            if ! curl -L -o "$work_dir/mailchatd.conf" "https://download.mailcoin.org/mailchatd.conf"; then
-                print_error "Unable to get default configuration file"
-                exit 1
-            fi
+    # Initialize configuration using mailchatd init
+    print_info "Initializing mailchatd configuration..."
+    if [ -f "$work_dir/mailchatd.conf" ]; then
+        print_info "Configuration file already exists, skipping init"
+    else
+        if ! MAILCHAT_HOME="$work_dir" mailchatd init; then
+            print_error "Failed to initialize mailchatd configuration"
+            exit 1
         fi
-        print_success "Default configuration file created successfully"
+        print_success "Configuration initialized successfully"
     fi
 
     # 2. Ask for email domain
